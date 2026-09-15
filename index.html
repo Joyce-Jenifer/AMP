@@ -2201,46 +2201,32 @@
 
 
 
-<!-- Pega Web Embed Mashup - launcher only -->
-<style id="pega-embed-launcher-only-style">
-  /* Keep the custom element out of the normal page layout. */
+<!-- Pega Web Embed Mashup - show only the floating Agent Chat launcher -->
+<style id="pega-embed-host-style">
+  /* Keep the Pega embed out of the normal document flow while allowing
+     its floating Agent Chat launcher to remain visible. */
   #pega-mashup-overlay {
-    position: static !important;
-    width: 0 !important;
+    width: 100% !important;
     height: 0 !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    max-width: 0 !important;
     max-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
-    background: transparent !important;
-    border: 0 !important;
+    position: relative !important;
     z-index: 2147483647 !important;
   }
 
-  #pega-mashup-overlay > pega-embed {
+  #pega-mashup-overlay pega-embed {
     display: block !important;
-    width: 0 !important;
-    height: 0 !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    max-width: 0 !important;
-    max-height: 0 !important;
+    width: 100% !important;
+    max-height: 0px !important;
+    overflow: hidden !important;
     margin: 0 !important;
     padding: 0 !important;
-    overflow: visible !important;
-    position: static !important;
-  }
-
-  /* If the launcher is a floating element, let it remain visible. */
-  #pega-mashup-overlay > pega-embed * {
-    box-sizing: border-box;
   }
 </style>
 
-<div id="pega-mashup-overlay" aria-label="Pega Agent Chat launcher only">
+<div id="pega-mashup-overlay" aria-label="Pega Agent Chat launcher">
   <script src="https://prod-cdn.constellation.pega.io/fea-cs-stage/26.1.0-103357/react/prod/pega-embed.js"></script>
 
   <pega-embed
@@ -2259,81 +2245,9 @@
       clientId="46414179409226248538"
       UserIdentifier="Carmelita Williams"
       Password="cnVsZXM="
-      style="width:0;height:0;max-height:0;overflow:visible;">
+      style="width:100%; max-height:0px !important; overflow:hidden !important;">
   </pega-embed>
 </div>
 
-<script>
-(function () {
-  const hostSelector = '#theEmbed';
-
-  function collapseFrame(frame) {
-    if (!frame) return;
-    frame.style.setProperty('display', 'none', 'important');
-    frame.style.setProperty('width', '0px', 'important');
-    frame.style.setProperty('height', '0px', 'important');
-    frame.style.setProperty('min-width', '0px', 'important');
-    frame.style.setProperty('min-height', '0px', 'important');
-    frame.style.setProperty('max-width', '0px', 'important');
-    frame.style.setProperty('max-height', '0px', 'important');
-    frame.style.setProperty('visibility', 'hidden', 'important');
-    frame.style.setProperty('pointer-events', 'none', 'important');
-  }
-
-  function inspectRoot(root) {
-    if (!root || !root.querySelectorAll) return;
-
-    // The full embedded Pega application is rendered in an iframe in the Web Embed.
-    root.querySelectorAll('iframe').forEach(collapseFrame);
-
-    // Cover nested open shadow roots as well.
-    root.querySelectorAll('*').forEach(function (el) {
-      if (el.shadowRoot) inspectRoot(el.shadowRoot);
-    });
-  }
-
-  function apply() {
-    const host = document.querySelector(hostSelector);
-    if (!host) return false;
-
-    host.style.setProperty('width', '0px', 'important');
-    host.style.setProperty('height', '0px', 'important');
-    host.style.setProperty('min-width', '0px', 'important');
-    host.style.setProperty('min-height', '0px', 'important');
-    host.style.setProperty('max-width', '0px', 'important');
-    host.style.setProperty('max-height', '0px', 'important');
-    host.style.setProperty('overflow', 'visible', 'important');
-
-    // First inspect the shadow root, if it is open.
-    if (host.shadowRoot) inspectRoot(host.shadowRoot);
-
-    // Also inspect document-level Pega frames, in case the component creates them outside the shadow root.
-    document.querySelectorAll('iframe').forEach(function (frame) {
-      const src = frame.getAttribute('src') || '';
-      const insidePegaHost = host.contains(frame);
-      const isPegaFrame = src.indexOf('omc-csfs-26.pegademo.com') !== -1 ||
-                          src.indexOf('pegademo.com') !== -1;
-      if (insidePegaHost || isPegaFrame) collapseFrame(frame);
-    });
-
-    return true;
-  }
-
-  const observer = new MutationObserver(function () {
-    apply();
-  });
-
-  observer.observe(document.documentElement, {childList: true, subtree: true});
-
-  let attempts = 0;
-  const timer = setInterval(function () {
-    attempts += 1;
-    apply();
-    if (attempts >= 80) clearInterval(timer);
-  }, 250);
-
-  window.addEventListener('load', apply);
-})();
-</script>
 </body>
 </html>
