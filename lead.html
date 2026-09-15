@@ -1503,9 +1503,46 @@ It also displays the home loan repayment amount based on either the AMP Essentia
 
  </div>
  </div>
- <div id="amp-apply-button-wrap" style="position:absolute;z-index:1000;left:58%;bottom:58px;display:flex;align-items:center;pointer-events:none;">
-  <button id="amp-apply-now" type="button" aria-expanded="false"
-    style="padding:13px 28px;background:#00D5AC;color:#001E41;border:0;font-size:18px;font-weight:600;line-height:1;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.18);pointer-events:auto;position:relative;z-index:100;white-space:nowrap;">
+
+<style id="amp-apply-layout-fix">
+  html, body {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    overflow-x: hidden !important;
+  }
+  .amp_footer,
+  .experiencefragment.cmp-experiencefragment--footer,
+  .experiencefragment.cmp-experiencefragment--footer > * {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  #amp-apply-button-wrap {
+    position: absolute !important;
+    z-index: 100000 !important;
+    display: flex !important;
+    align-items: center !important;
+    pointer-events: none !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: auto !important;
+    transform: translateY(-2px);
+  }
+  #amp-apply-now {
+    pointer-events: auto !important;
+    padding: 13px 28px !important;
+    background: #00D5AC !important;
+    color: #001E41 !important;
+    border: 0 !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,.18) !important;
+    white-space: nowrap !important;
+  }
+</style>
+ <div id="amp-apply-button-wrap">
+  <button id="amp-apply-now" type="button" aria-expanded="false">
     Apply Now
   </button>
 </div>
@@ -1532,25 +1569,62 @@ It also displays the home loan repayment amount based on either the AMP Essentia
 (function(){
   var btn = document.getElementById('amp-apply-now');
   var container = document.getElementById('pega-apply-container');
-  if (!btn || !container) return;
-  btn.addEventListener('click', function(){
-    var open = btn.getAttribute('aria-expanded') === 'true';
-    if (open) {
-      container.style.height = '0px';
-      container.style.maxHeight = '0px';
-      container.style.opacity = '0';
-      btn.setAttribute('aria-expanded','false');
-      btn.textContent = 'Apply Now';
-      return;
-    }
+  var iframe = document.getElementById('wiwo-tzububi');
+  var wrap = document.getElementById('amp-apply-button-wrap');
+  if (!btn || !container || !iframe || !wrap) return;
+
+  function positionApplyButton(){
+    var rect = iframe.getBoundingClientRect();
+    var scrollX = window.pageXOffset || document.documentElement.scrollLeft || 0;
+    var scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+
+    // Align the Apply Now button on the same footer row as "About this calculator",
+    // immediately to its right inside the calculator area.
+    var left = rect.left + scrollX + Math.min(355, Math.max(245, rect.width * 0.34));
+    var top = rect.top + scrollY + rect.height - 62;
+
+    wrap.style.left = Math.round(left) + 'px';
+    wrap.style.top = Math.round(top) + 'px';
+  }
+
+  function openPega(){
     container.style.height = '900px';
     container.style.maxHeight = '900px';
     container.style.opacity = '1';
+    container.style.overflow = 'visible';
     btn.setAttribute('aria-expanded','true');
-    setTimeout(function(){
-      container.scrollIntoView({behavior:'smooth',block:'start'});
-    }, 120);
+    btn.textContent = 'Close';
+    positionApplyButton();
+  }
+
+  function closePega(){
+    container.style.height = '0px';
+    container.style.maxHeight = '0px';
+    container.style.opacity = '0';
+    container.style.overflow = 'hidden';
+    btn.setAttribute('aria-expanded','false');
+    btn.textContent = 'Apply Now';
+  }
+
+  btn.addEventListener('click', function(){
+    var open = btn.getAttribute('aria-expanded') === 'true';
+    if (open) {
+      closePega();
+    } else {
+      openPega();
+      setTimeout(function(){
+        container.scrollIntoView({behavior:'smooth',block:'start'});
+      }, 120);
+    }
   });
+
+  window.addEventListener('load', positionApplyButton);
+  window.addEventListener('resize', positionApplyButton);
+  window.addEventListener('scroll', positionApplyButton, {passive:true});
+  if (iframe.contentWindow) {
+    iframe.addEventListener('load', function(){ setTimeout(positionApplyButton, 100); });
+  }
+  positionApplyButton();
 })();
 </script>
 </div>
