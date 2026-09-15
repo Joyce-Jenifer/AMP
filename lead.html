@@ -1,3 +1,42 @@
+<style id="amp-final-layout-fix">
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow-x: hidden !important;
+}
+
+#root, main, .basicpage, .aem-Grid, .responsivegrid {
+  min-height: 0 !important;
+}
+
+main.container {
+  padding-bottom: 0 !important;
+}
+
+footer {
+  margin-bottom: 0 !important;
+}
+
+/* The saved AMP page contains hidden helper/notification elements after the footer.
+   Keep them from creating any trailing document space. */
+body > .notification,
+body > .fade-window-banner,
+body > #mask-body,
+body > .overlay,
+#PING_IFRAME_FORM_DETECTION,
+#PING_CONTENT_PUSH_NOTIFICATION {
+  display: none !important;
+}
+
+/* Keep any hidden reCAPTCHA container out of the page flow. */
+body iframe[name^="c-"] {
+  position: absolute !important;
+  left: -10000px !important;
+  top: -10000px !important;
+}
+</style>
 <!DOCTYPE html>
  <html lang="en-AU" style="scrollbar-gutter:unset"><!--
  Page saved with SingleFile 
@@ -1045,7 +1084,7 @@ It also displays the home loan repayment amount based on either the AMP Essentia
 
 <div id="pega-apply-container" style="width:100%;height:0;max-height:0;overflow:hidden;opacity:0;transition:height .45s ease, opacity .25s ease;padding:0;margin:0;box-sizing:border-box;background:#ffffff;">
 <script src="https://omc-csfs-26.pegademo.com/prweb/PRRestService/c11nsvc/v1/pega-embed.js"></script>
-<pega-embed action="createCase" appalias="DemoSA" assignmentheader="true" authservice="pega" autoreauth="true" casepage="assignment" casetypeid="PegaCRM-Work-SFA-Lead-Ind" clientid="95769441382049129878" id="theEmbed" pegaserverurl="https://omc-csfs-26.pegademo.com/prweb/" style="display:block;width:100%;height:900px;min-height:900px;overflow:auto;" themeid="Pegasus (2022)">
+<pega-embed action="createCase" appalias="DemoSA" assignmentheader="false" authservice="pega" autoreauth="true" casepage="full" casetypeid="PegaCRM-Work-SFA-Lead-Ind" clientid="95769441382049129878" id="theEmbed" pegaserverurl="https://omc-csfs-26.pegademo.com/prweb/" style="display:block;width:100%;height:900px;min-height:900px;overflow:auto;" themeid="Pegasus (2022)">
 </pega-embed>
 </div><script>
 (function(){
@@ -1353,4 +1392,26 @@ It also displays the home loan repayment amount based on either the AMP Essentia
 &lt;body&gt;
 &lt;div&gt;&lt;div class=rc-footer&gt;&lt;div class=rc-separator&gt;&lt;/div&gt;&lt;div class=rc-controls&gt;&lt;div class=primary-controls&gt;&lt;div class=rc-buttons&gt;&lt;div class=&quot;button-holder reload-button-holder&quot;&gt;&lt;button class=&quot;rc-button goog-inline-block rc-button-reload&quot; title=&quot;Get a new challenge&quot; value id=recaptcha-reload-button tabindex=0&gt;&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;button-holder audio-button-holder&quot;&gt;&lt;button class=&quot;rc-button goog-inline-block rc-button-audio&quot; title=&quot;Get an audio challenge&quot; value id=recaptcha-audio-button tabindex=0&gt;&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;button-holder image-button-holder&quot;&gt;&lt;button class=&quot;rc-button goog-inline-block rc-button-image&quot; title=&quot;Get a visual challenge&quot; value id=recaptcha-image-button tabindex=0&gt;&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;button-holder liveness-button-holder&quot; style=display:none&gt;&lt;/div&gt;&lt;div class=&quot;button-holder qr-button-holder&quot; style=display:none&gt;&lt;/div&gt;&lt;div class=&quot;button-holder help-button-holder&quot;&gt;&lt;button class=&quot;rc-button goog-inline-block rc-button-help&quot; title=Help value id=recaptcha-help-button tabindex=0&gt;&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;button-holder undo-button-holder&quot;&gt;&lt;button class=&quot;rc-button goog-inline-block rc-button-undo&quot; title=Undo value id=recaptcha-undo-button tabindex=0 style=display:none&gt;&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=verify-button-holder&gt;&lt;button class=&quot;rc-button-default goog-inline-block&quot; title value id=recaptcha-verify-button tabindex=0&gt;Verify&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=rc-challenge-help style=display:none tabindex=0&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" style="width:100%;height:100%" title="recaptcha challenge expires in two minutes"></iframe></div></div>
 <div class="overlay fade-out"></div>
-</div></div></div></div></main></div></div></div></body></html>
+</div></div></div></div></main></div></div></div><script id="amp-final-height-fix">
+(function () {
+  function cleanup() {
+    try {
+      var body = document.body;
+      if (!body) return;
+      body.style.minHeight = '0px';
+      body.style.height = 'auto';
+      var root = document.getElementById('root');
+      if (root) root.style.minHeight = '0px';
+      var main = document.querySelector('main');
+      if (main) main.style.minHeight = '0px';
+    } catch (e) {}
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', cleanup);
+  } else {
+    cleanup();
+  }
+  window.addEventListener('load', cleanup);
+})();
+</script>
+</body></html>
