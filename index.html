@@ -796,6 +796,10 @@
  </div>
  </div>
  </li>
+
+ <li class="header-primary__list-item" role="none">
+ <a href="https://joyce-jenifer.github.io/AMP/lead.html" target="_self" class="header-primary-nav text-primary-text" style="display:flex;align-items:center;height:100%;text-decoration:none;cursor:pointer;white-space:nowrap;">Loan calculator</a>
+ </li>
  </ul>
  </nav>
  </div>
@@ -2201,28 +2205,39 @@
 
 
 
-<!-- Pega Web Embed Mashup - show only the floating Agent Chat launcher -->
+<!-- Pega Web Embed Mashup -->
 <style id="pega-embed-host-style">
-  /* Keep the Pega embed out of the normal document flow while allowing
-     its floating Agent Chat launcher to remain visible. */
+  /* Keep the AMP page visible and collapse only the host's layout box.
+     Do NOT use overflow:hidden on the custom element itself because that
+     can clip the Pega Agent Chat launcher along with the page. */
   #pega-mashup-overlay {
+    position: static !important;
     width: 100% !important;
     height: 0 !important;
+    min-height: 0 !important;
     max-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
+    background: transparent !important;
+    box-sizing: border-box !important;
     position: relative !important;
     z-index: 2147483647 !important;
   }
 
+  /* Collapse the Pega embed host without clipping floating launcher UI. */
   #pega-mashup-overlay pega-embed {
     display: block !important;
     width: 100% !important;
-    max-height: 0px !important;
-    overflow: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    box-sizing: border-box !important;
   }
 </style>
 
@@ -2245,9 +2260,69 @@
       clientId="46414179409226248538"
       UserIdentifier="Carmelita Williams"
       Password="cnVsZXM="
-      style="width:100%; max-height:0px !important; overflow:hidden !important;">
+      style="width:100%; max-height:0px !important; overflow:visible !important;">
   </pega-embed>
 </div>
+
+<script>
+(function () {
+  // Pega Web Embed renders its actual UI inside the custom element.
+  // The host should be collapsed, but the floating Agent Chat launcher
+  // must remain visible. Hide the embedded page frame when it is present.
+  function applyPegaLauncherMode() {
+    const host = document.getElementById('theEmbed');
+    if (!host) return false;
+
+    host.style.setProperty('max-height', '0px', 'important');
+    host.style.setProperty('overflow', 'visible', 'important');
+
+    const root = host.shadowRoot;
+    if (!root) return false;
+
+    // Insert one scoped stylesheet into the shadow root.
+    let style = root.querySelector('#amp-hide-pega-page');
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'amp-hide-pega-page';
+      style.textContent = `
+        /* Hide the embedded portal frame/content but do not clip the launcher. */
+        iframe {
+          max-height: 0 !important;
+          height: 0 !important;
+          min-height: 0 !important;
+          overflow: hidden !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+      `;
+      root.appendChild(style);
+    }
+
+    // Apply the same rule to any iframe that already exists.
+    root.querySelectorAll('iframe').forEach(function (frame) {
+      frame.style.setProperty('max-height', '0px', 'important');
+      frame.style.setProperty('height', '0px', 'important');
+      frame.style.setProperty('min-height', '0px', 'important');
+      frame.style.setProperty('overflow', 'hidden', 'important');
+      frame.style.setProperty('visibility', 'hidden', 'important');
+      frame.style.setProperty('pointer-events', 'none', 'important');
+    });
+
+    return true;
+  }
+
+  // Pega can finish upgrading the custom element asynchronously.
+  let attempts = 0;
+  const timer = setInterval(function () {
+    attempts += 1;
+    if (applyPegaLauncherMode() || attempts >= 60) {
+      clearInterval(timer);
+    }
+  }, 250);
+
+  window.addEventListener('load', applyPegaLauncherMode);
+})();
+</script>
 
 </body>
 </html>
