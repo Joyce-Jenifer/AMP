@@ -2899,47 +2899,69 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 </script>
 
 
-<script id="amp-hide-pega-chat-controls-final">
+<script id="amp-hide-pega-chat-controls-v7">
 (function(){
-  // Hide only the Pega Agent Chat controls requested:
-  // Active cases + the circular "Scroll to latest message" / process chevron.
-  // Pega renders these controls inside dynamically-created shadow roots.
+  /*
+   * Pega Agent Chat controls are rendered dynamically and may live in one
+   * or more shadow roots. Hide only these two controls:
+   *   1. Active cases
+   *   2. Scroll to latest message (the circular blue chevron)
+   * Do not hide their surrounding chat/content containers.
+   */
 
-  function HIDE(el){
+  const roots = window.__ampPegaShadowRoots || new Set();
+
+  function hide(el){
     if(!el || !el.style) return;
     el.style.setProperty('display','none','important');
     el.style.setProperty('visibility','hidden','important');
+    el.style.setProperty('opacity','0','important');
     el.style.setProperty('pointer-events','none','important');
-    el.setAttribute('data-amp-hidden-control','true');
   }
 
-  // Inject CSS directly into every Pega shadow root. This is important because
-  // Pega Agent Chat renders its controls inside Shadow DOM, where page-level
-  // CSS cannot reach them.
-  function installShadowCSS(root){
-    if(!root || !root.appendChild) return;
+  function value(el,name){
+    return ((el && el.getAttribute && el.getAttribute(name)) || '')
+      .trim().replace(/\s+/g,' ').toLowerCase();
+  }
+
+  function isActive(el){
+    return value(el,'aria-label').startsWith('active cases') ||
+           value(el,'title').startsWith('active cases') ||
+           value(el,'data-testid').includes('active-cases');
+  }
+
+  function isLatest(el){
+    return value(el,'aria-label').includes('scroll to latest message') ||
+           value(el,'aria-label').includes('scroll to latest') ||
+           value(el,'title').includes('scroll to latest') ||
+           value(el,'data-testid').includes('scroll-to-latest') ||
+           value(el,'data-testid').includes('latest-message');
+  }
+
+  function closestButton(el){
+    if(!el) return null;
+    if(el.tagName && el.tagName.toLowerCase()==='button') return el;
+    return el.closest ? el.closest('button') : null;
+  }
+
+  function injectCSS(root){
+    if(!root || !root.querySelector || !root.appendChild) return;
     try{
-      if(root.querySelector && root.querySelector('style[data-amp-hide-chat-controls]')) return;
+      if(root.querySelector('#amp-hide-v7-style')) return;
       const style=document.createElement('style');
-      style.setAttribute('data-amp-hide-chat-controls','true');
+      style.id='amp-hide-v7-style';
       style.textContent=`
-        /* Hide Active cases */
         button[aria-label*="Active cases" i],
         button[title*="Active cases" i],
-        button[data-testid*="active-cases" i]{
-          display:none !important;
-          visibility:hidden !important;
-          pointer-events:none !important;
-        }
-
-        /* Hide Pega's circular Scroll-to-latest / Process chevron */
+        button[data-testid*="active-cases" i],
         button[aria-label*="Scroll to latest message" i],
         button[aria-label*="Scroll to latest" i],
-        button[title*="Scroll to latest message" i],
         button[title*="Scroll to latest" i],
-        button[data-testid*="scroll-to-latest" i]{
+        button[data-testid*="scroll-to-latest" i],
+        button[data-testid*="latest-message" i]{
           display:none !important;
           visibility:hidden !important;
+          opacity:0 !important;
           pointer-events:none !important;
         }
       `;
@@ -2947,146 +2969,66 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
     }catch(e){}
   }
 
-  function value(el,name){
-    return ((el.getAttribute && el.getAttribute(name)) || '')
-      .trim().replace(/\s+/g,' ').toLowerCase();
-  }
-
-  function text(el){
-    return (el.textContent || '').trim().replace(/\s+/g,' ').toLowerCase();
-  }
-
-  function isActiveCases(btn){
-    return value(btn,'aria-label').startsWith('active cases') ||
-           value(btn,'title').startsWith('active cases') ||
-           value(btn,'data-testid').includes('active-cases') ||
-           text(btn).startsWith('active cases');
-  }
-
-  function isProcessChevron(btn){
-    const aria=value(btn,'aria-label');
-    const title=value(btn,'title');
-    const testid=value(btn,'data-testid');
-    const name=value(btn,'name');
-
-    // Exact control shown in DevTools:
-    // aria-label="Scroll to latest message"
-    if(aria === 'scroll to latest message' ||
-       aria.includes('scroll to latest') ||
-       title.includes('scroll to latest') ||
-       testid.includes('scroll-to-latest')) return true;
-
-    return aria.includes('process') ||
-           title.includes('process') ||
-           testid.includes('process') ||
-           name.includes('process');
-  }
-
-  function isTarget(btn){
-    return !!btn && btn.tagName === 'BUTTON' &&
-           (isActiveCases(btn) || isProcessChevron(btn));
-  }
-
-  function scanRoot(root){
+  function scan(root,visited){
     if(!root || !root.querySelectorAll) return;
+    visited=visited||new Set();
+    if(visited.has(root)) return;
+    visited.add(root);
+
     try{
-      installShadowCSS(root);
-      root.querySelectorAll('button').forEach(function(btn){
-        if(isTarget(btn)) HIDE(btn);
-      });
-
-      // Pega may create nested shadow roots.
-      // Directly target the exact Pega control visible in DevTools.
-      root.querySelectorAll('[aria-label*="Scroll to latest" i], [title*="Scroll to latest" i]').forEach(function(el){
-        const btn = el.tagName === 'BUTTON' ? el : (el.closest ? el.closest('button') : null);
-        if(btn){
-          HIDE(btn);
-          // In this Pega version the circular chevron is wrapped in a small
-          // positioned container. Hide that wrapper too, without affecting
-          // the conversation or message composer.
-          const parent = btn.parentElement;
-          if(parent && parent.children.length <= 2){
-            HIDE(parent);
-          }
-        }
-      });
-
+      injectCSS(root);
       root.querySelectorAll('*').forEach(function(el){
-        if(el.shadowRoot){
-          installShadowCSS(el.shadowRoot);
-          scanRoot(el.shadowRoot);
+        if(isActive(el) || isLatest(el)){
+          hide(closestButton(el) || el);
         }
+        if(el.shadowRoot) scan(el.shadowRoot,visited);
       });
     }catch(e){}
   }
 
   function scanAll(){
-    try{ scanRoot(document); }catch(e){}
-
-    // IMPORTANT: Pega Web Embed may use CLOSED shadow roots.
-    // The capture script above stores those roots in window.__ampPegaShadowRoots.
-    // A normal document.querySelectorAll() cannot reach them, so scan the
-    // captured roots directly as well. This is what makes the hide reliable.
+    const visited=new Set();
+    try{ injectCSS(document); }catch(e){}
     try{
-      if(window.__ampPegaShadowRoots){
-        window.__ampPegaShadowRoots.forEach(function(root){
-          scanRoot(root);
-          observeRoot(root);
-        });
-      }
-    }catch(e){}
-  }
-
-  function observeRoot(root){
-    if(!root || root.__ampControlsObserver) return;
-    try{
-      const observer=new MutationObserver(function(){ scanRoot(root); });
-      observer.observe(root,{childList:true,subtree:true,attributes:true,
-        attributeFilter:['aria-label','title','data-testid','name','class','style']});
-      try{ root.__ampControlsObserver=observer; }catch(e){}
-      scanRoot(root);
-    }catch(e){}
-  }
-
-  function observeAll(){
-    try{
-      if(!document.__ampControlsObserver){
-        const observer=new MutationObserver(function(){
-          scanAll();
-          document.querySelectorAll('*').forEach(function(el){
-            if(el.shadowRoot) observeRoot(el.shadowRoot);
-          });
-        });
-        observer.observe(document.documentElement || document.body,{childList:true,subtree:true});
-        try{ document.__ampControlsObserver=observer; }catch(e){}
-      }
-
-      scanAll();
       document.querySelectorAll('*').forEach(function(el){
-        if(el.shadowRoot) observeRoot(el.shadowRoot);
+        if(isActive(el) || isLatest(el)) hide(closestButton(el) || el);
+        if(el.shadowRoot) scan(el.shadowRoot,visited);
       });
+    }catch(e){}
+    try{ roots.forEach(function(root){ scan(root,visited); }); }catch(e){}
+  }
 
-      // Also observe captured CLOSED shadow roots created by Pega.
-      try{
-        if(window.__ampPegaShadowRoots){
-          window.__ampPegaShadowRoots.forEach(function(root){
-            observeRoot(root);
-          });
-        }
-      }catch(e){}
+  function observe(root){
+    if(!root || !root.querySelectorAll) return;
+    try{
+      if(root.__ampHideV7Observer) return;
+      const observer=new MutationObserver(function(){ scan(root); });
+      observer.observe(root,{
+        subtree:true,
+        childList:true,
+        attributes:true,
+        attributeFilter:['aria-label','title','data-testid','hidden','class','style']
+      });
+      root.__ampHideV7Observer=observer;
     }catch(e){}
   }
 
-  scanAll();
-  observeAll();
-
-  // Keep checking because Pega Web Embed can recreate the control.
-  setInterval(function(){
+  function run(){
     scanAll();
-    document.querySelectorAll('*').forEach(function(el){
-      if(el.shadowRoot) observeRoot(el.shadowRoot);
-    });
-  },500);
+    try{
+      roots.forEach(observe);
+      document.querySelectorAll('*').forEach(function(el){
+        if(el.shadowRoot) observe(el.shadowRoot);
+      });
+    }catch(e){}
+  }
+
+  run();
+  window.addEventListener('load',run);
+  setTimeout(run,100);
+  setTimeout(run,500);
+  setTimeout(run,1000);
+  setInterval(run,500);
 })();
 </script>
 
@@ -3463,3 +3405,5 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 }
 </style>
 
+
+<!-- AMP Pega controls fix v7: Active cases + Scroll-to-latest hidden -->
