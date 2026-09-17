@@ -2938,6 +2938,36 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
            value(el,'data-testid').includes('latest-message');
   }
 
+  // svg icon data-icon-name="case-solid" used on the "File a complaint (S-...)" pill button.
+  function isCaseSolidIcon(el){
+    return !!(el && el.tagName && el.tagName.toLowerCase()==='svg' && value(el,'data-icon-name')==='case-solid');
+  }
+
+  // svg icon data-icon-name="chevron" used on the same pill button; hide the whole div > button > svg chain.
+  function isChevronIcon(el){
+    return !!(el && el.tagName && el.tagName.toLowerCase()==='svg' && value(el,'data-icon-name')==='chevron');
+  }
+
+  function closestActionable(el){
+    if(!el) return null;
+    const actionable=el.closest ? el.closest('button, [role="button"], a') : null;
+    return actionable || el.parentElement || el;
+  }
+
+  function closestActionableContainer(el){
+    const actionable=closestActionable(el);
+    return (actionable && actionable.parentElement) || actionable;
+  }
+
+  // "File a complaint (S-...)" suggestion button with "Intake: Capture ..." subtext.
+  function isFileComplaintSuggestion(el){
+    if(!el || !el.tagName) return false;
+    const tag=el.tagName.toLowerCase();
+    if(tag!=='button' && el.getAttribute('role')!=='button') return false;
+    const text=(el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+    return text.indexOf('file a complaint') !== -1 && text.indexOf('intake') !== -1;
+  }
+
   function closestButton(el){
     if(!el) return null;
     if(el.tagName && el.tagName.toLowerCase()==='button') return el;
@@ -2958,7 +2988,13 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
         button[aria-label*="Scroll to latest" i],
         button[title*="Scroll to latest" i],
         button[data-testid*="scroll-to-latest" i],
-        button[data-testid*="latest-message" i]{
+        button[data-testid*="latest-message" i],
+        button:has(svg[data-icon-name="case-solid"]),
+        [role="button"]:has(svg[data-icon-name="case-solid"]),
+        a:has(svg[data-icon-name="case-solid"]),
+        div:has(> button svg[data-icon-name="chevron"]),
+        div:has(> [role="button"] svg[data-icon-name="chevron"]),
+        div:has(> a svg[data-icon-name="chevron"]){
           display:none !important;
           visibility:hidden !important;
           opacity:0 !important;
@@ -2981,6 +3017,15 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
         if(isActive(el) || isLatest(el)){
           hide(closestButton(el) || el);
         }
+        if(isFileComplaintSuggestion(el)){
+          hide(el);
+        }
+        if(isCaseSolidIcon(el)){
+          hide(closestActionable(el));
+        }
+        if(isChevronIcon(el)){
+          hide(closestActionableContainer(el));
+        }
         if(el.shadowRoot) scan(el.shadowRoot,visited);
       });
     }catch(e){}
@@ -2992,6 +3037,9 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
     try{
       document.querySelectorAll('*').forEach(function(el){
         if(isActive(el) || isLatest(el)) hide(closestButton(el) || el);
+        if(isFileComplaintSuggestion(el)) hide(el);
+        if(isCaseSolidIcon(el)) hide(closestActionable(el));
+        if(isChevronIcon(el)) hide(closestActionableContainer(el));
         if(el.shadowRoot) scan(el.shadowRoot,visited);
       });
     }catch(e){}
