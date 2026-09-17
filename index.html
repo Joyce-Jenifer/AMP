@@ -2881,133 +2881,113 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 </script>
 
 
-<script id="amp-hide-agent-chat-controls">
+<script id="amp-hide-pega-chat-controls-final">
 (function(){
-  /* Hide only the Pega Agent Chat controls requested:
-     1. Active cases button
-     2. Scroll-to-latest-message chevron button
-     The chat window itself remains unchanged. */
-  function hideChatControls(root){
-    if(!root) return;
+  /*
+   * Hide Pega Agent Chat controls inside open Shadow DOMs.
+   * Pega renders some of its chat popovers outside the pega-embed host,
+   * so we scan every open shadow root instead of only #theEmbed.
+   */
+  const STYLE_ID = 'amp-hide-pega-chat-controls-style';
+  const HIDE = `display:none !important; visibility:hidden !important;`;
 
-    const all = root.querySelectorAll ? root.querySelectorAll('*') : [];
-    all.forEach(function(el){
-      if(el.shadowRoot) hideChatControls(el.shadowRoot);
-
-      if(el.tagName === 'BUTTON'){
-        const aria = (el.getAttribute('aria-label') || '').trim().toLowerCase();
-        const text = (el.textContent || '').trim().toLowerCase();
-
-        if(aria.startsWith('active cases') || text.startsWith('active cases')){
-          el.style.setProperty('display','none','important');
+  function injectStyle(root){
+    if(!root || !root.querySelector || !root.appendChild) return;
+    try{
+      if(root.querySelector('#'+STYLE_ID)) return;
+      const style=document.createElement('style');
+      style.id=STYLE_ID;
+      style.textContent=`
+        button[aria-label^="Active cases"],
+        button[aria-label^="active cases"],
+        button[aria-label*="Active cases"],
+        button[aria-label*="active cases"],
+        button[data-testid="scroll-to-latest-message"],
+        button[aria-label="Scroll to latest message"],
+        button[aria-label="scroll to latest message"],
+        button[aria-label*="Scroll to latest"],
+        button[aria-label*="scroll to latest"],
+        button[title*="Scroll to latest"],
+        button[title*="scroll to latest"]{
+          ${HIDE}
         }
+      `;
+      root.appendChild(style);
+    }catch(e){}
+  }
 
-        if(aria === 'scroll to latest message' || aria.includes('scroll to latest')){
-          el.style.setProperty('display','none','important');
+  function hideButtons(root){
+    if(!root || !root.querySelectorAll) return;
+    injectStyle(root);
+    try{
+      root.querySelectorAll('button').forEach(function(btn){
+        const aria=(btn.getAttribute('aria-label')||'').trim().toLowerCase();
+        const title=(btn.getAttribute('title')||'').trim().toLowerCase();
+        const testid=(btn.getAttribute('data-testid')||'').trim().toLowerCase();
+        const text=(btn.textContent||'').trim().replace(/\s+/g,' ').toLowerCase();
+
+        const active = aria.startsWith('active cases') || text.startsWith('active cases');
+        const latest = aria.includes('scroll to latest') || title.includes('scroll to latest') || testid.includes('scroll-to-latest');
+
+        if(active || latest){
+          btn.style.setProperty('display','none','important');
+          btn.style.setProperty('visibility','hidden','important');
         }
-      }
-    });
+      });
+    }catch(e){}
   }
 
-  function apply(){
-    const host = document.getElementById('theEmbed');
-    if(!host) return;
+  function scan(root, seen){
+    if(!root || seen.has(root)) return;
+    seen.add(root);
+    hideButtons(root);
 
-    const root = host.shadowRoot;
-    if(!root) return;
-
-    hideChatControls(root);
-  }
-
-  let tries = 0;
-  const timer = setInterval(function(){
-    tries++;
-    apply();
-    if(tries >= 120) clearInterval(timer);
-  }, 500);
-
-  const observer = new MutationObserver(function(){
-    apply();
-  });
-
-  function startObserver(){
-    const host = document.getElementById('theEmbed');
-    if(!host || !host.shadowRoot) return false;
-    observer.observe(host.shadowRoot,{childList:true,subtree:true});
-    apply();
-    return true;
-  }
-
-  let observerTries = 0;
-  const observerTimer = setInterval(function(){
-    observerTries++;
-    if(startObserver() || observerTries >= 60) clearInterval(observerTimer);
-  }, 500);
-})();
-</script>
-
-
-<script id="amp-hide-pega-chat-controls">
-(function(){
-  const HIDE_STYLE = `
-    display:none !important;
-    visibility:hidden !important;
-    width:0 !important;
-    min-width:0 !important;
-    max-width:0 !important;
-    height:0 !important;
-    min-height:0 !important;
-    max-height:0 !important;
-    margin:0 !important;
-    padding:0 !important;
-    border:0 !important;
-    overflow:hidden !important;
-    pointer-events:none !important;
-  `;
-
-  function shouldHide(el){
-    if(!el || el.nodeType !== 1) return false;
-    const aria = (el.getAttribute('aria-label') || '').trim().toLowerCase();
-    const testid = (el.getAttribute('data-testid') || '').trim().toLowerCase();
-    const text = (el.textContent || '').trim().replace(/\s+/g,' ').toLowerCase();
-
-    // Pega Web Embed / GenAI Coach header control
-    if(el.tagName === 'BUTTON' && aria.startsWith('active cases')) return true;
-
-    // Pega Web Embed scroll-to-latest-message control (the circular chevron)
-    if(el.tagName === 'BUTTON' && (
-      aria === 'scroll to latest message' ||
-      aria.includes('scroll to latest message') ||
-      testid === 'scroll-to-latest-message'
-    )) return true;
-
-    return false;
-  }
-
-  function hideInRoot(root){
-    if(!root) return;
     let nodes=[];
-    try { nodes = root.querySelectorAll('*'); } catch(e) { return; }
-    nodes.forEach(el=>{
-      if(shouldHide(el)) el.style.cssText += HIDE_STYLE;
-      // Walk into nested open shadow roots as well.
-      if(el.shadowRoot) hideInRoot(el.shadowRoot);
+    try{ nodes=root.querySelectorAll('*'); }catch(e){ return; }
+    nodes.forEach(function(el){
+      if(el.shadowRoot) scan(el.shadowRoot, seen);
     });
   }
 
-  function scan(){
-    hideInRoot(document);
-    document.querySelectorAll('*').forEach(el=>{
-      if(el.shadowRoot) hideInRoot(el.shadowRoot);
-    });
+  function fullScan(){
+    const seen=new Set();
+    scan(document,seen);
+    try{
+      document.querySelectorAll('*').forEach(function(el){
+        if(el.shadowRoot) scan(el.shadowRoot,seen);
+      });
+    }catch(e){}
   }
 
-  // Pega renders these controls dynamically inside its Shadow DOM.
-  const observer = new MutationObserver(()=>scan());
-  observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['aria-label','data-testid','class','style']});
+  // Run continuously while Pega finishes rendering/re-rendering its chat UI.
+  fullScan();
+  const timer=setInterval(fullScan,250);
+  setTimeout(function(){ clearInterval(timer); },30000);
 
-  // Repeat briefly after Web Embed initialization, then leave the observer active.
-  [0,100,300,700,1200,2000,3500,5000,8000].forEach(ms=>setTimeout(scan,ms));
+  // Re-scan when Pega adds/replaces DOM nodes in the page.
+  try{
+    new MutationObserver(fullScan).observe(document.documentElement,{childList:true,subtree:true});
+  }catch(e){}
+
+  // Also attach observers to every open shadow root we can find.
+  function attachShadowObservers(){
+    const seen=new Set();
+    function walk(root){
+      if(!root || seen.has(root)) return;
+      seen.add(root);
+      try{
+        new MutationObserver(fullScan).observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-label','title','data-testid','class']});
+      }catch(e){}
+      try{
+        root.querySelectorAll('*').forEach(function(el){ if(el.shadowRoot) walk(el.shadowRoot); });
+      }catch(e){}
+    }
+    walk(document);
+    try{ document.querySelectorAll('*').forEach(function(el){ if(el.shadowRoot) walk(el.shadowRoot); }); }catch(e){}
+  }
+
+  attachShadowObservers();
+  [500,1000,2000,4000,8000].forEach(function(ms){ setTimeout(attachShadowObservers,ms); });
 })();
 </script>
 
