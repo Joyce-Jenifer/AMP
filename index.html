@@ -1,6 +1,6 @@
 
+
 <style id="amp-pega-control-hide-fallback">
-/* Fallback for any Pega control exposed to the page stylesheet. */
 button[aria-label*="Active cases" i],
 button[title*="Active cases" i],
 button[aria-label*="Scroll to latest" i],
@@ -12,6 +12,7 @@ button[data-testid*="latest-message" i]{
   pointer-events:none !important;
 }
 </style>
+
 <!DOCTYPE html> <html lang=en-AU style=scrollbar-gutter:unset><!--
  Page saved with SingleFile 
  url: https://www.amp.com.au/ 
@@ -2916,13 +2917,11 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 <script id="amp-hide-pega-chat-controls-final">
 (function(){
   /*
-   * Hide only the Pega Agent Chat "Active cases" control and the
-   * circular "Scroll to latest message" control.
-   *
-   * Pega renders these controls dynamically and may nest them inside
-   * multiple Shadow DOM roots. This version recursively scans every
-   * captured/open root and hides the matching element itself or its
-   * nearest button ancestor.
+   * Pega Agent Chat renders the "scroll to latest" control without a
+   * dependable aria-label/data-testid in some versions. Active cases is
+   * also rendered dynamically. This script therefore uses BOTH semantic
+   * labels and the visual/DOM characteristics of the floating circular
+   * control.
    */
 
   const roots = window.__ampPegaShadowRoots || new Set();
@@ -2934,80 +2933,108 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
     el.style.setProperty('pointer-events','none','important');
   }
 
-  function value(el, attr){
-    return ((el.getAttribute && el.getAttribute(attr)) || '')
-      .trim()
-      .replace(/\s+/g,' ')
-      .toLowerCase();
+  function attr(el, name){
+    return ((el.getAttribute && el.getAttribute(name)) || '')
+      .trim().replace(/\s+/g,' ').toLowerCase();
   }
 
-  function isLatestElement(el){
-    if(!el || !el.getAttribute) return false;
-
-    const aria = value(el,'aria-label');
-    const title = value(el,'title');
-    const testid = value(el,'data-testid');
-    const name = value(el,'name');
-    const text = (el.textContent || '')
-      .trim()
-      .replace(/\s+/g,' ')
-      .toLowerCase();
-
-    return (
-      aria.includes('scroll to latest') ||
-      aria.includes('latest message') ||
-      title.includes('scroll to latest') ||
-      title.includes('latest message') ||
-      testid.includes('scroll-to-latest') ||
-      testid.includes('latest-message') ||
-      name.includes('scroll-to-latest') ||
-      name.includes('latest-message') ||
-      text === 'scroll to latest message' ||
-      text === 'scroll to latest'
-    );
+  function normalizedText(el){
+    return (el.textContent || '').trim().replace(/\s+/g,' ').toLowerCase();
   }
 
-  function isActiveCasesElement(el){
-    if(!el || !el.getAttribute) return false;
-
-    const aria = value(el,'aria-label');
-    const title = value(el,'title');
-    const testid = value(el,'data-testid');
-    const text = (el.textContent || '')
-      .trim()
-      .replace(/\s+/g,' ')
-      .toLowerCase();
-
-    return (
-      aria.startsWith('active cases') ||
-      title.startsWith('active cases') ||
-      testid.includes('active-cases') ||
-      text.startsWith('active cases')
-    );
+  function isActiveCases(el){
+    const aria = attr(el,'aria-label');
+    const title = attr(el,'title');
+    const testid = attr(el,'data-testid');
+    const text = normalizedText(el);
+    return aria.startsWith('active cases') ||
+           title.startsWith('active cases') ||
+           testid.includes('active-cases') ||
+           text.startsWith('active cases');
   }
 
-  function hideTargetOrButton(el){
-    if(!el) return;
+  function isExplicitLatest(el){
+    const aria = attr(el,'aria-label');
+    const title = attr(el,'title');
+    const testid = attr(el,'data-testid');
+    const name = attr(el,'name');
+    return aria.includes('scroll to latest') ||
+           aria.includes('latest message') ||
+           title.includes('scroll to latest') ||
+           title.includes('latest message') ||
+           testid.includes('scroll-to-latest') ||
+           testid.includes('latest-message') ||
+           name.includes('scroll-to-latest') ||
+           name.includes('latest-message');
+  }
 
-    if(isActiveCasesElement(el) || isLatestElement(el)){
-      const button = el.closest ? el.closest('button') : null;
-      hide(button || el);
-      return;
+  function closestButton(el){
+    if(!el) return null;
+    if(el.tagName && el.tagName.toLowerCase() === 'button') return el;
+    return el.closest ? el.closest('button') : null;
+  }
+
+  /*
+   * Exact visual target from the screenshot:
+   * - a circular button
+   * - approximately 40–60px
+   * - no meaningful text
+   * - located in the message/content region, not the header
+   *
+   * This deliberately excludes the header's +, actions and close buttons,
+   * and excludes the quick-action arrow because that element is rectangular.
+   */
+  function isFloatingScrollButton(button){
+    if(!button || !button.getBoundingClientRect) return false;
+
+    if(isActiveCases(button) || isExplicitLatest(button)) return true;
+
+    const rect = button.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
+
+    if(w < 36 || h < 36 || w > 70 || h > 70) return false;
+    if(Math.abs(w - h) > 8) return false;
+
+    const computed = getComputedStyle(button);
+    const radius = computed.borderRadius || '';
+    const isRound = radius.includes('50%') ||
+                    radius.includes('999') ||
+                    parseFloat(radius) >= Math.min(w,h) * 0.42;
+    if(!isRound) return false;
+
+    const text = normalizedText(button);
+    if(text && text.length > 12) return false;
+
+    /*
+     * Header controls are in the top toolbar. The floating scroll control
+     * sits below that toolbar, normally over the message stream.
+     */
+    const host = button.closest
+      ? button.closest('[data-testid="gen-ai-coach"]')
+      : null;
+
+    if(!host) return false;
+
+    const hostRect = host.getBoundingClientRect();
+    const relativeTop = rect.top - hostRect.top;
+
+    /*
+     * Keep toolbar buttons. A scroll-to-latest button appears below the
+     * first ~70px of the coach header and above the composer.
+     */
+    if(relativeTop < 65) return false;
+
+    const composer = host.querySelector
+      ? host.querySelector('textarea,input,[contenteditable="true"]')
+      : null;
+
+    if(composer){
+      const cr = composer.getBoundingClientRect();
+      if(rect.top > cr.top + 20) return false;
     }
 
-    /* If the accessible label is on a descendant, hide its button ancestor. */
-    try{
-      const descendants = el.querySelectorAll
-        ? el.querySelectorAll('[aria-label],[title],[data-testid],[name]')
-        : [];
-
-      descendants.forEach(function(child){
-        if(isActiveCasesElement(child) || isLatestElement(child)){
-          const button = child.closest ? child.closest('button') : null;
-          hide(button || child);
-        }
-      });
-    }catch(e){}
+    return true;
   }
 
   function scanRoot(root, visited){
@@ -3017,23 +3044,27 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
     visited.add(root);
 
     try{
-      /* Scan every element, not just buttons. */
       root.querySelectorAll('*').forEach(function(el){
-        hideTargetOrButton(el);
+        if(isActiveCases(el) || isExplicitLatest(el)){
+          hide(closestButton(el) || el);
+          return;
+        }
 
-        /* Recursively scan nested open Shadow DOM roots. */
+        if(el.tagName && el.tagName.toLowerCase() === 'button'){
+          if(isFloatingScrollButton(el)){
+            hide(el);
+          }
+        }
+
         if(el.shadowRoot){
           scanRoot(el.shadowRoot, visited);
         }
       });
     }catch(e){}
 
-    /* Also scan elements that may have been captured as closed roots. */
     try{
-      roots.forEach(function(capturedRoot){
-        if(capturedRoot !== root){
-          scanRoot(capturedRoot, visited);
-        }
+      roots.forEach(function(r){
+        if(r !== root) scanRoot(r, visited);
       });
     }catch(e){}
   }
@@ -3043,7 +3074,14 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 
     try{
       document.querySelectorAll('*').forEach(function(el){
-        hideTargetOrButton(el);
+        if(isActiveCases(el) || isExplicitLatest(el)){
+          hide(closestButton(el) || el);
+        }
+
+        if(el.tagName && el.tagName.toLowerCase() === 'button' &&
+           isFloatingScrollButton(el)){
+          hide(el);
+        }
 
         if(el.shadowRoot){
           scanRoot(el.shadowRoot, visited);
@@ -3059,7 +3097,7 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
   }
 
   function observeRoot(root){
-    if(!root || root.__ampControlsObserverV5) return;
+    if(!root || root.__ampControlsObserverV6) return;
 
     try{
       const observer = new MutationObserver(function(){
@@ -3070,39 +3108,32 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
         childList:true,
         subtree:true,
         attributes:true,
-        attributeFilter:['aria-label','title','data-testid','name','class']
+        attributeFilter:[
+          'aria-label','title','data-testid','name','class','style'
+        ]
       });
 
-      try{ root.__ampControlsObserverV5 = observer; }catch(e){}
+      try{ root.__ampControlsObserverV6 = observer; }catch(e){}
       scanRoot(root);
-    }catch(e){}
-  }
-
-  function observeAll(){
-    try{
-      roots.forEach(observeRoot);
-
-      document.querySelectorAll('*').forEach(function(el){
-        if(el.shadowRoot){
-          observeRoot(el.shadowRoot);
-        }
-      });
     }catch(e){}
   }
 
   function run(){
     scanDocument();
-    observeAll();
+
+    try{
+      roots.forEach(observeRoot);
+      document.querySelectorAll('*').forEach(function(el){
+        if(el.shadowRoot) observeRoot(el.shadowRoot);
+      });
+    }catch(e){}
   }
 
   run();
   window.addEventListener('load', run);
 
-  /*
-   * Keep watching because Agent Chat can recreate its toolbar/scroll
-   * controls after messages arrive or after the chat state changes.
-   */
-  setInterval(run, 300);
+  /* Pega can recreate the floating control after a new response/scroll. */
+  setInterval(run, 500);
 })();
 </script>
 
