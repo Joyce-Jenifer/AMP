@@ -2880,6 +2880,72 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 })();
 </script>
 
+
+<script id="amp-hide-agent-chat-controls">
+(function(){
+  /* Hide only the Pega Agent Chat controls requested:
+     1. Active cases button
+     2. Scroll-to-latest-message chevron button
+     The chat window itself remains unchanged. */
+  function hideChatControls(root){
+    if(!root) return;
+
+    const all = root.querySelectorAll ? root.querySelectorAll('*') : [];
+    all.forEach(function(el){
+      if(el.shadowRoot) hideChatControls(el.shadowRoot);
+
+      if(el.tagName === 'BUTTON'){
+        const aria = (el.getAttribute('aria-label') || '').trim().toLowerCase();
+        const text = (el.textContent || '').trim().toLowerCase();
+
+        if(aria.startsWith('active cases') || text.startsWith('active cases')){
+          el.style.setProperty('display','none','important');
+        }
+
+        if(aria === 'scroll to latest message' || aria.includes('scroll to latest')){
+          el.style.setProperty('display','none','important');
+        }
+      }
+    });
+  }
+
+  function apply(){
+    const host = document.getElementById('theEmbed');
+    if(!host) return;
+
+    const root = host.shadowRoot;
+    if(!root) return;
+
+    hideChatControls(root);
+  }
+
+  let tries = 0;
+  const timer = setInterval(function(){
+    tries++;
+    apply();
+    if(tries >= 120) clearInterval(timer);
+  }, 500);
+
+  const observer = new MutationObserver(function(){
+    apply();
+  });
+
+  function startObserver(){
+    const host = document.getElementById('theEmbed');
+    if(!host || !host.shadowRoot) return false;
+    observer.observe(host.shadowRoot,{childList:true,subtree:true});
+    apply();
+    return true;
+  }
+
+  let observerTries = 0;
+  const observerTimer = setInterval(function(){
+    observerTries++;
+    if(startObserver() || observerTries >= 60) clearInterval(observerTimer);
+  }, 500);
+})();
+</script>
+
 </body>
 
 
