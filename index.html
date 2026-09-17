@@ -2946,6 +2946,71 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 })();
 </script>
 
+
+<script id="amp-hide-pega-chat-controls">
+(function(){
+  const HIDE_STYLE = `
+    display:none !important;
+    visibility:hidden !important;
+    width:0 !important;
+    min-width:0 !important;
+    max-width:0 !important;
+    height:0 !important;
+    min-height:0 !important;
+    max-height:0 !important;
+    margin:0 !important;
+    padding:0 !important;
+    border:0 !important;
+    overflow:hidden !important;
+    pointer-events:none !important;
+  `;
+
+  function shouldHide(el){
+    if(!el || el.nodeType !== 1) return false;
+    const aria = (el.getAttribute('aria-label') || '').trim().toLowerCase();
+    const testid = (el.getAttribute('data-testid') || '').trim().toLowerCase();
+    const text = (el.textContent || '').trim().replace(/\s+/g,' ').toLowerCase();
+
+    // Pega Web Embed / GenAI Coach header control
+    if(el.tagName === 'BUTTON' && aria.startsWith('active cases')) return true;
+
+    // Pega Web Embed scroll-to-latest-message control (the circular chevron)
+    if(el.tagName === 'BUTTON' && (
+      aria === 'scroll to latest message' ||
+      aria.includes('scroll to latest message') ||
+      testid === 'scroll-to-latest-message'
+    )) return true;
+
+    return false;
+  }
+
+  function hideInRoot(root){
+    if(!root) return;
+    let nodes=[];
+    try { nodes = root.querySelectorAll('*'); } catch(e) { return; }
+    nodes.forEach(el=>{
+      if(shouldHide(el)) el.style.cssText += HIDE_STYLE;
+      // Walk into nested open shadow roots as well.
+      if(el.shadowRoot) hideInRoot(el.shadowRoot);
+    });
+  }
+
+  function scan(){
+    hideInRoot(document);
+    document.querySelectorAll('*').forEach(el=>{
+      if(el.shadowRoot) hideInRoot(el.shadowRoot);
+    });
+  }
+
+  // Pega renders these controls dynamically inside its Shadow DOM.
+  const observer = new MutationObserver(()=>scan());
+  observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['aria-label','data-testid','class','style']});
+
+  // Repeat briefly after Web Embed initialization, then leave the observer active.
+  [0,100,300,700,1200,2000,3500,5000,8000].forEach(ms=>setTimeout(scan,ms));
+})();
+</script>
+
 </body>
 
 
