@@ -2910,6 +2910,41 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
     el.style.setProperty('display','none','important');
     el.style.setProperty('visibility','hidden','important');
     el.style.setProperty('pointer-events','none','important');
+    el.setAttribute('data-amp-hidden-control','true');
+  }
+
+  // Inject CSS directly into every Pega shadow root. This is important because
+  // Pega Agent Chat renders its controls inside Shadow DOM, where page-level
+  // CSS cannot reach them.
+  function installShadowCSS(root){
+    if(!root || !root.appendChild) return;
+    try{
+      if(root.querySelector && root.querySelector('style[data-amp-hide-chat-controls]')) return;
+      const style=document.createElement('style');
+      style.setAttribute('data-amp-hide-chat-controls','true');
+      style.textContent=`
+        /* Hide Active cases */
+        button[aria-label*="Active cases" i],
+        button[title*="Active cases" i],
+        button[data-testid*="active-cases" i]{
+          display:none !important;
+          visibility:hidden !important;
+          pointer-events:none !important;
+        }
+
+        /* Hide Pega's circular Scroll-to-latest / Process chevron */
+        button[aria-label*="Scroll to latest message" i],
+        button[aria-label*="Scroll to latest" i],
+        button[title*="Scroll to latest message" i],
+        button[title*="Scroll to latest" i],
+        button[data-testid*="scroll-to-latest" i]{
+          display:none !important;
+          visibility:hidden !important;
+          pointer-events:none !important;
+        }
+      `;
+      root.appendChild(style);
+    }catch(e){}
   }
 
   function value(el,name){
@@ -2955,13 +2990,23 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
   function scanRoot(root){
     if(!root || !root.querySelectorAll) return;
     try{
+      installShadowCSS(root);
       root.querySelectorAll('button').forEach(function(btn){
         if(isTarget(btn)) HIDE(btn);
       });
 
       // Pega may create nested shadow roots.
+      // Directly target the exact Pega control visible in DevTools.
+      root.querySelectorAll('[aria-label*="Scroll to latest" i], [title*="Scroll to latest" i]').forEach(function(el){
+        if(el.tagName === 'BUTTON') HIDE(el);
+        else if(el.closest && el.closest('button')) HIDE(el.closest('button'));
+      });
+
       root.querySelectorAll('*').forEach(function(el){
-        if(el.shadowRoot) scanRoot(el.shadowRoot);
+        if(el.shadowRoot){
+          installShadowCSS(el.shadowRoot);
+          scanRoot(el.shadowRoot);
+        }
       });
     }catch(e){}
   }
