@@ -833,7 +833,7 @@
           aria-expanded="false" aria-haspopup="true" aria-controls="ampOperatorDropdown">
     <i class="icon-person" aria-hidden="true"></i>
     <span class="amp-operator-name">Carmelita Williams</span>
-    <span class="amp-operator-chevron" aria-hidden="true">⌄</span>
+    <span class="amp-operator-chevron" aria-hidden="true"></span>
   </button>
 
   <div id="ampOperatorDropdown" class="amp-operator-dropdown" role="menu" hidden>
@@ -2478,9 +2478,9 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 <div id="ampComplaintModal" class="amp-complaint-modal" aria-hidden="true">
   <section class="amp-complaint-dialog" role="dialog" aria-modal="true" aria-labelledby="ampComplaintTitle">
     <div class="amp-complaint-header">
-      <div>
-        <h2 id="ampComplaintTitle">Raise a Complaint</h2>
-        <p>Complete the complaint details below.</p>
+      <div class="amp-workspace-title">
+        <span class="amp-workspace-icon amp-complaint-icon" aria-hidden="true"><svg viewBox="0 0 32 32" focusable="false"><path d="M7 7.5h18a2.5 2.5 0 0 1 2.5 2.5v10a2.5 2.5 0 0 1-2.5 2.5H16l-6.5 5v-5H7A2.5 2.5 0 0 1 4.5 20V10A2.5 2.5 0 0 1 7 7.5Z"/><path d="M16 12v5"/><path d="M16 20.5h.01"/></svg></span>
+        <div><h2 id="ampComplaintTitle">Raise a Complaint</h2><p>Complete the complaint details below.</p></div>
       </div>
       <button type="button" id="ampComplaintClose" class="amp-cases-close" aria-label="Close Raise a Complaint">×</button>
     </div>
@@ -2494,7 +2494,10 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 <div id="ampCasesOverlay" class="amp-cases-overlay" aria-hidden="true">
   <section class="amp-cases-dialog" role="dialog" aria-modal="true" aria-labelledby="ampCasesTitle">
     <div class="amp-cases-header">
-      <div><h2 id="ampCasesTitle">My Cases</h2><p>Cases associated with your operator ID</p></div>
+      <div class="amp-workspace-title">
+        <span class="amp-workspace-icon amp-cases-icon" aria-hidden="true"><svg viewBox="0 0 32 32" focusable="false"><path d="M5.5 10.5h21v14a2 2 0 0 1-2 2h-17a2 2 0 0 1-2-2v-14Z"/><path d="M11 10.5V8.8a2.3 2.3 0 0 1 2.3-2.3h5.4A2.3 2.3 0 0 1 21 8.8v1.7"/><path d="M5.5 15h21"/><path d="M13 15v2.5h6V15"/></svg></span>
+        <div><h2 id="ampCasesTitle">My Cases</h2><p>Cases associated with your operator ID</p></div>
+      </div>
       <button type="button" id="ampCasesClose" class="amp-cases-close" aria-label="Close My Cases">×</button>
     </div>
     <div id="ampCasesBody" class="amp-cases-body">
@@ -2870,3 +2873,153 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 
 </body>
 </html>
+
+
+<style id="amp-final-visual-overrides">
+/* Final visual polish: keep the AMP navigation untouched and refine only the workspaces. */
+.amp-cases-header,
+.amp-complaint-header{
+  padding:20px max(28px, calc((100vw - 1280px) / 2)) !important;
+  min-height:86px;
+  box-sizing:border-box;
+}
+.amp-workspace-title{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+.amp-workspace-title h2{
+  margin:0 !important;
+  font-size:27px !important;
+  line-height:1.15 !important;
+  letter-spacing:-.02em;
+}
+.amp-workspace-title p{
+  margin:4px 0 0 !important;
+  font-size:13px !important;
+  line-height:1.35;
+}
+.amp-workspace-icon{
+  width:42px;
+  height:42px;
+  flex:0 0 42px;
+  display:grid;
+  place-items:center;
+  border-radius:11px;
+  background:#eef7fb;
+  color:#008dcc;
+  box-shadow:inset 0 0 0 1px #d9edf5;
+}
+.amp-workspace-icon svg{
+  width:25px;
+  height:25px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.amp-complaint-icon{
+  background:#fff5ec;
+  color:#c56b20;
+  box-shadow:inset 0 0 0 1px #f6dfca;
+}
+.amp-cases-close{
+  width:36px !important;
+  height:36px !important;
+  flex:0 0 36px !important;
+  font-size:20px !important;
+  border-radius:9px !important;
+  background:#f5f7f9 !important;
+  transition:background .18s ease, transform .18s ease !important;
+}
+.amp-cases-close:hover,.amp-cases-close:focus-visible{
+  background:#eaf2f7 !important;
+  transform:scale(1.04) !important;
+}
+.amp-cases-body{
+  width:min(1280px,100%) !important;
+  padding:28px max(28px, 3vw) 54px !important;
+}
+.amp-case-list{
+  gap:16px !important;
+}
+.amp-case-card{
+  min-height:104px !important;
+  padding:20px 22px 20px 28px !important;
+  border-radius:12px !important;
+  background:#fff !important;
+  box-shadow:0 5px 18px rgba(0,30,65,.055) !important;
+}
+.amp-case-card:before{
+  top:16px !important;
+  bottom:16px !important;
+  width:4px !important;
+  border-radius:2px !important;
+  background:#1498c9 !important;
+}
+.amp-case-card:after{
+  display:none !important;
+}
+.amp-case-card:hover{
+  transform:translateY(-2px);
+  border-color:#c7d6df;
+  box-shadow:0 9px 24px rgba(0,30,65,.085) !important;
+}
+.amp-case-status{
+  border-radius:8px !important;
+  padding:8px 12px !important;
+  border:1px solid #dce3ff !important;
+  background:#eef1ff !important;
+  font-size:13px !important;
+}
+.amp-case-status-dot{
+  width:6px !important;
+  height:6px !important;
+}
+/* Refined operator dropdown arrow */
+.amp-operator-chevron{
+  width:9px !important;
+  height:9px !important;
+  margin:0 1px 4px 3px !important;
+  font-size:0 !important;
+  line-height:0 !important;
+  border-right:2px solid currentColor;
+  border-bottom:2px solid currentColor;
+  transform:rotate(45deg);
+  transition:transform .18s ease;
+  opacity:.85;
+}
+.amp-operator-button[aria-expanded="true"] .amp-operator-chevron{
+  transform:rotate(225deg) !important;
+  margin-bottom:-2px !important;
+}
+.amp-operator-button{
+  gap:9px !important;
+  padding:9px 10px !important;
+  border-radius:10px !important;
+}
+.amp-operator-button:hover,.amp-operator-button:focus-visible{
+  background:#f1f6f9 !important;
+}
+.amp-operator-dropdown{
+  top:calc(100% + 7px) !important;
+  border-radius:12px !important;
+  box-shadow:0 14px 32px rgba(0,30,65,.14) !important;
+}
+.amp-menu-icon{
+  border-radius:10px !important;
+}
+.amp-complaint-embed-host{
+  padding:28px max(28px, 3vw) 54px !important;
+}
+@media(max-width:640px){
+  .amp-cases-header,.amp-complaint-header{padding:17px 18px !important;min-height:74px}
+  .amp-workspace-title{gap:10px}
+  .amp-workspace-icon{width:36px;height:36px;flex-basis:36px;border-radius:9px}
+  .amp-workspace-icon svg{width:21px;height:21px}
+  .amp-workspace-title h2{font-size:23px !important}
+  .amp-workspace-title p{font-size:12px !important}
+  .amp-cases-body,.amp-complaint-embed-host{padding:20px 14px 40px !important}
+}
+</style>
