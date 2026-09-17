@@ -2902,36 +2902,115 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 <script id="amp-hide-pega-chat-controls-final">
 (function(){
   /*
-   * Pega Agent Chat can render its controls inside CLOSED shadow roots.
-   * The interceptor above captures those roots before Pega creates them.
-   * We then hide only the Active cases control and the latest-message
-   * chevron, while leaving the rest of Sparky untouched.
+   * Hide Pega Agent Chat's Active cases button and the circular
+   * Process/scroll chevron that Pega renders dynamically.
+   *
+   * Active cases has a usable label in some Pega versions.
+   * Process chevron does not always have a stable label, so it is
+   * detected by its shape and its position inside the chat content area.
    */
+
   const roots = window.__ampPegaShadowRoots || new Set();
-  const HIDE = function(el){
+
+  function HIDE(el){
+    if(!el || !el.style) return;
     el.style.setProperty('display','none','important');
     el.style.setProperty('visibility','hidden','important');
     el.style.setProperty('pointer-events','none','important');
-  };
+  }
+
+  function value(el,name){
+    return ((el.getAttribute && el.getAttribute(name)) || '')
+      .trim().replace(/\s+/g,' ').toLowerCase();
+  }
+
+  function text(el){
+    return (el.textContent || '').trim().replace(/\s+/g,' ').toLowerCase();
+  }
+
+  function isActiveCases(btn){
+    return value(btn,'aria-label').startsWith('active cases') ||
+           value(btn,'title').startsWith('active cases') ||
+           value(btn,'data-testid').includes('active-cases') ||
+           text(btn).startsWith('active cases');
+  }
+
+  function isNamedProcessChevron(btn){
+    const aria=value(btn,'aria-label');
+    const title=value(btn,'title');
+    const testid=value(btn,'data-testid');
+    const name=value(btn,'name');
+
+    return aria.includes('process') ||
+           title.includes('process') ||
+           testid.includes('process') ||
+           name.includes('process') ||
+           aria.includes('scroll to latest') ||
+           title.includes('scroll to latest') ||
+           testid.includes('scroll-to-latest') ||
+           aria.includes('latest message') ||
+           title.includes('latest message');
+  }
+
+  function isCircularContentChevron(btn){
+    if(!btn || btn.tagName !== 'BUTTON' || !btn.getBoundingClientRect) return false;
+
+    const rect=btn.getBoundingClientRect();
+    const w=rect.width;
+    const h=rect.height;
+
+    // Process chevron in Pega Agent Chat is a small circular control.
+    if(w < 36 || h < 36 || w > 70 || h > 70) return false;
+    if(Math.abs(w-h) > 8) return false;
+
+    const cs=getComputedStyle(btn);
+    const radius=cs.borderRadius || '';
+    const round=radius.includes('50%') ||
+                radius.includes('999') ||
+                parseFloat(radius) >= Math.min(w,h)*0.42;
+    if(!round) return false;
+
+    // Do not hide text buttons.
+    if(text(btn).length > 12) return false;
+
+    // Only target buttons inside the Pega GenAI Coach.
+    const coach=btn.closest ? btn.closest('[data-testid="gen-ai-coach"]') : null;
+    if(!coach) return false;
+
+    const coachRect=coach.getBoundingClientRect();
+    const relativeTop=rect.top-coachRect.top;
+
+    // Header controls (+, Actions, Close, etc.) are in the top area.
+    if(relativeTop < 65) return false;
+
+    // Feedback buttons are near the composer and are smaller/usually
+    // non-circular; this also prevents targeting controls below the
+    // conversation stream.
+    const composer=coach.querySelector
+      ? coach.querySelector('textarea,input,[contenteditable="true"]')
+      : null;
+
+    if(composer){
+      const cr=composer.getBoundingClientRect();
+
+      // Process chevron sits in the conversation area above composer.
+      if(rect.top > cr.top + 20) return false;
+    }
+
+    return true;
+  }
 
   function isTarget(btn){
     if(!btn || btn.tagName !== 'BUTTON') return false;
-    const aria = (btn.getAttribute('aria-label') || '').trim().toLowerCase();
-    const title = (btn.getAttribute('title') || '').trim().toLowerCase();
-    const testid = (btn.getAttribute('data-testid') || '').trim().toLowerCase();
-    const text = (btn.textContent || '').trim().replace(/\s+/g,' ').toLowerCase();
 
-    const active = aria.startsWith('active cases') ||
-                   title.startsWith('active cases') ||
-                   text.startsWith('active cases');
+    if(isActiveCases(btn)) return true;
+    if(isNamedProcessChevron(btn)) return true;
 
-    const latest = aria.includes('scroll to latest') ||
-                   title.includes('scroll to latest') ||
-                   testid.includes('scroll-to-latest') ||
-                   aria.includes('latest message') ||
-                   title.includes('latest message');
+    // Fallback for Pega versions where the Process chevron has no
+    // accessible name/test id.
+    if(isCircularContentChevron(btn)) return true;
 
-    return active || latest;
+    return false;
   }
 
   function scanRoot(root){
@@ -2944,9 +3023,10 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
   }
 
   function scanAll(){
-    roots.forEach(scanRoot);
-    // Also handle any normal/open roots that existed before this script.
     try{
+      roots.forEach(scanRoot);
+
+      // Also handle open shadow roots that existed before this script.
       document.querySelectorAll('*').forEach(function(el){
         if(el.shadowRoot) scanRoot(el.shadowRoot);
       });
@@ -2955,17 +3035,30 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 
   function observeRoot(root){
     if(!root || root.__ampControlsObserver) return;
+
     try{
-      const observer = new MutationObserver(function(){ scanRoot(root); });
-      observer.observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-label','title','data-testid','class']});
-      try{ root.__ampControlsObserver = observer; }catch(e){}
+      const observer=new MutationObserver(function(){
+        scanRoot(root);
+      });
+
+      observer.observe(root,{
+        childList:true,
+        subtree:true,
+        attributes:true,
+        attributeFilter:[
+          'aria-label','title','data-testid','name','class','style'
+        ]
+      });
+
+      try{ root.__ampControlsObserver=observer; }catch(e){}
       scanRoot(root);
     }catch(e){}
   }
 
   function observeAll(){
-    roots.forEach(observeRoot);
     try{
+      roots.forEach(observeRoot);
+
       document.querySelectorAll('*').forEach(function(el){
         if(el.shadowRoot) observeRoot(el.shadowRoot);
       });
@@ -2980,14 +3073,8 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
   run();
   window.addEventListener('load',run);
 
-  // Pega creates/replaces parts of Agent Chat asynchronously.
-  const timer=setInterval(function(){
-    run();
-  },250);
-
-  // Keep the protection active for the lifetime of the page.
-  // This is intentionally lightweight: it only inspects buttons in the
-  // captured Pega shadow roots.
+  // Pega can recreate the Process chevron after messages/scrolling.
+  setInterval(run,500);
 })();
 </script>
 
