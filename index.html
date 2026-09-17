@@ -2221,6 +2221,103 @@
 
 
 
+
+<style id="amp-complaint-style">
+  .amp-complaint-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483001;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 30, 65, .55);
+  }
+
+  .amp-complaint-modal.is-open {
+    display: flex;
+  }
+
+  .amp-complaint-dialog {
+    width: min(960px, 100%);
+    height: min(860px, 92vh);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(0, 30, 65, .30);
+    overflow: hidden;
+  }
+
+  .amp-complaint-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 22px 28px 18px;
+    border-bottom: 1px solid #e5e8ec;
+  }
+
+  .amp-complaint-header h2 {
+    margin: 0;
+    color: #001e41;
+    font-size: 26px;
+    line-height: 1.2;
+  }
+
+  .amp-complaint-header p {
+    margin: 5px 0 0;
+    color: #4c617a;
+    font-size: 14px;
+  }
+
+  .amp-complaint-embed-host {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 0;
+    background: #fff;
+  }
+
+  .amp-complaint-embed-host pega-embed {
+    display: block;
+    width: 100% !important;
+    min-height: 650px;
+  }
+
+  .amp-complaint-loading,
+  .amp-complaint-error {
+    margin: 24px;
+    padding: 40px 20px;
+    border-radius: 12px;
+    text-align: center;
+    background: #f7f8fa;
+    color: #4c617a;
+  }
+
+  .amp-complaint-error {
+    color: #8a1f2d;
+    background: #fff3f4;
+  }
+
+  @media (max-width: 640px) {
+    .amp-complaint-modal {
+      padding: 10px;
+    }
+
+    .amp-complaint-dialog {
+      height: 94vh;
+      border-radius: 14px;
+    }
+
+    .amp-complaint-header {
+      padding-left: 18px;
+      padding-right: 18px;
+    }
+  }
+</style>
+
 <style id="amp-operator-menu-style">
 .amp-operator-menu{position:relative;display:inline-flex;align-items:center;margin-left:18px;z-index:10000}
 .amp-operator-button{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:#001e41;font:inherit;font-weight:600;font-size:16px;line-height:1;padding:10px 8px;border-radius:8px;cursor:pointer;white-space:nowrap}
@@ -2255,6 +2352,23 @@
 @media(max-width:640px){.amp-operator-menu{margin-left:4px}.amp-operator-name{max-width:130px;overflow:hidden;text-overflow:ellipsis}.amp-cases-overlay{padding:12px}.amp-cases-header,.amp-cases-body{padding-left:18px;padding-right:18px}.amp-case-card{grid-template-columns:1fr;gap:10px}.amp-case-status{justify-self:start}}
 </style>
 
+
+<div id="ampComplaintModal" class="amp-complaint-modal" aria-hidden="true">
+  <section class="amp-complaint-dialog" role="dialog" aria-modal="true" aria-labelledby="ampComplaintTitle">
+    <div class="amp-complaint-header">
+      <div>
+        <h2 id="ampComplaintTitle">Raise a Complaint</h2>
+        <p>Complete the complaint details below.</p>
+      </div>
+      <button type="button" id="ampComplaintClose" class="amp-cases-close" aria-label="Close Raise a Complaint">×</button>
+    </div>
+
+    <div id="ampComplaintEmbedHost" class="amp-complaint-embed-host">
+      <div class="amp-complaint-loading">Loading complaint form...</div>
+    </div>
+  </section>
+</div>
+
 <div id="ampCasesOverlay" class="amp-cases-overlay" aria-hidden="true">
   <section class="amp-cases-dialog" role="dialog" aria-modal="true" aria-labelledby="ampCasesTitle">
     <div class="amp-cases-header">
@@ -2288,10 +2402,102 @@
   myCases.addEventListener("click",openCases);
   close.addEventListener("click",closeCases);
   overlay.addEventListener("click",e=>{if(e.target===overlay)closeCases()});
-  document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();if(overlay.classList.contains("is-open"))closeCases()}});
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape"){
+      closeMenu();
+      if(overlay.classList.contains("is-open"))closeCases();
+      const complaintModal=document.getElementById("ampComplaintModal");
+      if(complaintModal && complaintModal.classList.contains("is-open"))closeComplaint();
+    }
+  });
 
-  // Reserved for the next change: wire Raise a Complaint to the complaint flow.
-  if(complaint)complaint.addEventListener("click",closeMenu);
+  if(complaint) {
+    complaint.addEventListener("click", function () {
+      closeMenu();
+      openComplaint();
+    });
+  }
+
+  function openComplaint() {
+    if (!window.ampComplaintModal) return;
+
+    window.ampComplaintModal.classList.add("is-open");
+    window.ampComplaintModal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+
+    loadComplaintEmbed();
+  }
+
+  function closeComplaint() {
+    if (!window.ampComplaintModal) return;
+
+    window.ampComplaintModal.classList.remove("is-open");
+    window.ampComplaintModal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  }
+
+  async function loadComplaintEmbed() {
+    const host = document.getElementById("ampComplaintEmbedHost");
+    if (!host || host.dataset.loaded === "true") return;
+
+    host.innerHTML = '<div class="amp-complaint-loading">Loading complaint form...</div>';
+
+    try {
+      // Load the Pega Web Embed library requested for the complaint flow.
+      await new Promise(function (resolve, reject) {
+        const existing = document.querySelector(
+          'script[src="https://omc-csfs-26.pegademo.com/prweb/PRRestService/c11nsvc/v1/pega-embed.js"]'
+        );
+
+        if (existing) {
+          resolve();
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.src = "https://omc-csfs-26.pegademo.com/prweb/PRRestService/c11nsvc/v1/pega-embed.js";
+        script.onload = resolve;
+        script.onerror = function () {
+          reject(new Error("Unable to load the Pega Web Embed script."));
+        };
+        document.head.appendChild(script);
+      });
+
+      host.innerHTML = `
+        <pega-embed
+          id="ampComplaintEmbed"
+          action="createCase"
+          caseTypeID="FS-CSFSDemo-Work-Grp1-FileAComplaint"
+          themeID="AMP"
+          casePage="assignment"
+          assignmentHeader="false"
+          appAlias="CSFSDemo"
+          pegaServerUrl="https://omc-csfs-26.pegademo.com/prweb/"
+          autoReauth="true"
+          authService="pega"
+          clientId="25967181096906812524"
+          style="width:100%; min-height:650px; display:block;">
+        </pega-embed>
+      `;
+
+      host.dataset.loaded = "true";
+    } catch (error) {
+      console.error("Unable to load Raise a Complaint:", error);
+      host.innerHTML =
+        '<div class="amp-complaint-error">' +
+          '<strong>Unable to load the complaint form.</strong><br>' +
+          'Please check the Pega Web Embed configuration.' +
+        '</div>';
+    }
+  }
+
+  document.getElementById("ampComplaintClose").addEventListener("click", closeComplaint);
+
+  document.getElementById("ampComplaintModal").addEventListener("click", function (event) {
+    if (event.target === this) {
+      closeComplaint();
+    }
+  });
 
   function caseId(x){return x.caseID??x.caseId??x.caseid??x.CaseID??x.CaseId??x.id??x.ID??x.pyID??"—"}
   function status(x){return x.caseStatus??x.caseStatusName??x.status??x.Status??x.CaseStatus??x.pyStatus??"—"}
@@ -2322,7 +2528,7 @@
   async function loadCases(){
     body.innerHTML='<div class="amp-cases-loading">Loading your cases...</div>';
     try{
-      const response=await fetch(CASES_API,{method:"GET",headers:{"Accept":"application/json"}});
+      const response=await fetch(CASES_API,{method:"GET",mode:"cors",credentials:"omit",headers:{"Accept":"application/json"}});
       if(!response.ok)throw new Error("API returned HTTP "+response.status);
       render(extract(await response.json()));
     }catch(error){
