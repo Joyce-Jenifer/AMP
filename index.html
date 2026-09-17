@@ -2222,98 +2222,220 @@
 
 
 
-<style id="amp-complaint-style">
-  /* Full-screen complaint workspace — intentionally not a modal/card. */
-  .amp-complaint-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 2147483001;
-    display: none;
-    width: 100%;
-    height: 100%;
-    background: #f5f7fa;
-  }
+<style id="amp-workspace-style">
+/* AMP inline workspace: stays below the existing AMP navigation/header. */
+.amp-cases-overlay,
+.amp-complaint-modal{
+  position:relative !important;
+  inset:auto !important;
+  z-index:20 !important;
+  display:none;
+  width:100% !important;
+  min-height:0;
+  background:#f5f7fa;
+  overflow:visible !important;
+  box-sizing:border-box;
+}
+.amp-cases-overlay.is-open,
+.amp-complaint-modal.is-open{display:block}
 
-  .amp-complaint-modal.is-open {
-    display: block;
-  }
+/* When either workspace is active, keep AMP navigation/header visible and
+   replace only the original page content below the header. */
+main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){display:none !important}
 
-  .amp-complaint-dialog {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    background: #f5f7fa;
-    border-radius: 0;
-    box-shadow: none;
-    overflow: hidden;
-  }
+.amp-cases-dialog,
+.amp-complaint-dialog{
+  width:100% !important;
+  min-height:calc(100vh - 120px);
+  display:flex;
+  flex-direction:column;
+  background:#f5f7fa;
+  border-radius:0;
+  box-shadow:none;
+  overflow:visible !important;
+}
 
-  .amp-complaint-header {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 28px max(28px, calc((100vw - 1180px) / 2));
-    background: #fff;
-    border-bottom: 1px solid #e5e8ec;
-    box-shadow: 0 2px 12px rgba(0,30,65,.05);
-  }
+.amp-cases-header,
+.amp-complaint-header{
+  width:100%;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+  padding:32px max(28px, calc((100vw - 1280px) / 2));
+  background:#fff;
+  border-bottom:1px solid #e5e8ec;
+  box-shadow:0 2px 12px rgba(0,30,65,.045);
+}
+.amp-cases-header h2,
+.amp-complaint-header h2{
+  margin:0;
+  color:#001e41;
+  font-size:32px;
+  line-height:1.15;
+  letter-spacing:-.02em;
+}
+.amp-cases-header p,
+.amp-complaint-header p{
+  margin:7px 0 0;
+  color:#526b84;
+  font-size:15px;
+}
 
-  .amp-complaint-header h2 {
-    margin: 0;
-    color: #001e41;
-    font-size: 26px;
-    line-height: 1.2;
-  }
+.amp-cases-close{
+  width:42px;height:42px;flex:0 0 42px;
+  border:1px solid #e1e7ed;
+  border-radius:50%;
+  background:#f6f8fa;
+  color:#001e41;
+  font-size:24px;
+  line-height:1;
+  cursor:pointer;
+  transition:all .18s ease;
+}
+.amp-cases-close:hover,.amp-cases-close:focus-visible{
+  background:#eaf3f8;
+  border-color:#b9d8e8;
+  transform:rotate(90deg);
+  outline:none;
+}
 
-  .amp-complaint-header p {
-    margin: 5px 0 0;
-    color: #4c617a;
-    font-size: 14px;
-  }
+.amp-cases-body{
+  width:min(1280px,100%);
+  margin:0 auto;
+  padding:34px max(28px, 3vw) 60px;
+  box-sizing:border-box;
+  overflow:visible;
+}
 
-  .amp-complaint-embed-host {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: auto;
-    width: min(1180px, 100%);
-    margin: 0 auto;
-    padding: 28px 28px 40px;
-    background: #f5f7fa;
-    box-sizing: border-box;
-  }
+/* More polished case cards */
+.amp-case-list{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:18px;
+}
+.amp-case-card{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+  min-height:108px;
+  padding:22px 24px 22px 30px;
+  border:1px solid #e0e6ec;
+  border-radius:18px;
+  background:linear-gradient(135deg,#ffffff 0%,#fbfdff 100%);
+  box-shadow:0 4px 14px rgba(0,30,65,.055);
+  overflow:hidden;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+.amp-case-card:before{
+  content:"";
+  position:absolute;
+  left:0;top:18px;bottom:18px;
+  width:5px;
+  border-radius:0 5px 5px 0;
+  background:linear-gradient(180deg,#008dcc,#19a4cf);
+}
+.amp-case-card:after{
+  content:"";
+  position:absolute;
+  width:90px;height:90px;
+  right:-42px;top:-48px;
+  border-radius:50%;
+  background:#f1f8fc;
+  pointer-events:none;
+}
+.amp-case-card:hover{
+  transform:translateY(-3px);
+  border-color:#cbdbe5;
+  box-shadow:0 12px 28px rgba(0,30,65,.09);
+}
+.amp-case-id-label{
+  margin-bottom:7px;
+  color:#7a8c9e;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+.amp-case-id{
+  color:#001e41;
+  font-size:20px;
+  font-weight:750;
+  letter-spacing:-.01em;
+  word-break:break-word;
+}
+.amp-case-status{
+  position:relative;
+  z-index:1;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 15px;
+  border:1px solid rgba(0,24,240,.055);
+  border-radius:999px;
+  background:#eef1ff;
+  color:#0018f0;
+  font-size:13px;
+  font-weight:700;
+  white-space:nowrap;
+}
+.amp-case-status-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
 
-  .amp-complaint-embed-host pega-embed {
-    display: block;
-    width: 100% !important;
-    min-height: 650px;
-  }
+.amp-cases-loading,.amp-cases-error,.amp-cases-empty{
+  padding:48px 20px;
+  text-align:center;
+  border-radius:18px;
+  background:#fff;
+  border:1px solid #e1e7ec;
+  color:#526b84;
+  box-shadow:0 5px 18px rgba(0,30,65,.05);
+}
+.amp-cases-error{color:#8a1f2d;background:#fff5f6}
 
-  .amp-complaint-loading,
-  .amp-complaint-error {
-    margin: 24px;
-    padding: 40px 20px;
-    border-radius: 12px;
-    text-align: center;
-    background: #f7f8fa;
-    color: #4c617a;
-  }
+/* Complaint workspace */
+.amp-complaint-embed-host{
+  width:min(1280px,100%);
+  min-height:700px;
+  margin:0 auto;
+  padding:32px max(28px, 3vw) 60px;
+  box-sizing:border-box;
+  background:#f5f7fa;
+  overflow:visible;
+}
+.amp-complaint-embed-host pega-embed{
+  display:block;
+  width:100% !important;
+  min-height:700px;
+  background:#fff;
+  border:1px solid #e0e6ec;
+  border-radius:18px;
+  box-shadow:0 5px 20px rgba(0,30,65,.06);
+  overflow:hidden;
+}
+.amp-complaint-loading,.amp-complaint-error{
+  padding:48px 20px;
+  text-align:center;
+  border-radius:18px;
+  background:#fff;
+  border:1px solid #e1e7ec;
+  color:#526b84;
+}
+.amp-complaint-error{color:#8a1f2d;background:#fff5f6}
 
-  .amp-complaint-error {
-    color: #8a1f2d;
-    background: #fff3f4;
-  }
-
-  @media (max-width: 640px) {
-    .amp-complaint-header {
-      padding: 20px 18px 16px;
-    }
-    .amp-complaint-embed-host {
-      padding: 18px 12px 28px;
-    }
-  }
+@media(max-width:760px){
+  .amp-case-list{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .amp-cases-header,.amp-complaint-header{padding:22px 18px}
+  .amp-cases-header h2,.amp-complaint-header h2{font-size:26px}
+  .amp-cases-body,.amp-complaint-embed-host{padding:22px 14px 40px}
+  .amp-case-card{align-items:flex-start;flex-direction:column;gap:14px;padding:20px 20px 20px 26px}
+  .amp-case-status{align-self:flex-start}
+  .amp-complaint-embed-host pega-embed{min-height:650px}
+}
 </style>
 
 <style id="amp-operator-menu-style">
@@ -2391,14 +2513,39 @@
   const overlay=document.getElementById("ampCasesOverlay");
   const close=document.getElementById("ampCasesClose");
   const body=document.getElementById("ampCasesBody");
+  const main=document.querySelector("main");
+  const complaintPanel=document.getElementById("ampComplaintModal");
   if(!operatorButton||!dropdown||!myCases||!overlay)return;
+
+  /* Mount both workspaces directly inside <main> so the AMP header/navigation
+     remains untouched and the selected experience appears immediately below it. */
+  if(main){
+    if(overlay.parentElement!==main) main.insertBefore(overlay,main.firstElementChild);
+    if(complaintPanel && complaintPanel.parentElement!==main) main.insertBefore(complaintPanel,main.firstElementChild);
+  }
+
+  function setWorkspace(active){
+    if(main) main.classList.toggle("amp-workspace-active",!!active);
+  }
 
   function closeMenu(){dropdown.hidden=true;operatorButton.setAttribute("aria-expanded","false")}
   operatorButton.addEventListener("click",function(e){e.stopPropagation();const open=dropdown.hidden;dropdown.hidden=!open;operatorButton.setAttribute("aria-expanded",String(open))});
   document.addEventListener("click",function(e){if(!e.target.closest(".amp-operator-menu"))closeMenu()});
 
-  function openCases(){closeMenu();overlay.classList.add("is-open");overlay.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";loadCases()}
-  function closeCases(){overlay.classList.remove("is-open");overlay.setAttribute("aria-hidden","true");document.body.style.overflow=""}
+  function openCases(){
+    closeMenu();
+    if(complaintPanel){complaintPanel.classList.remove("is-open");complaintPanel.setAttribute("aria-hidden","true");}
+    overlay.classList.add("is-open");
+    overlay.setAttribute("aria-hidden","false");
+    setWorkspace(true);
+    loadCases();
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+  function closeCases(){
+    overlay.classList.remove("is-open");
+    overlay.setAttribute("aria-hidden","true");
+    if(!complaintPanel || !complaintPanel.classList.contains("is-open")) setWorkspace(false);
+  }
   myCases.addEventListener("click",openCases);
   close.addEventListener("click",closeCases);
   overlay.addEventListener("click",e=>{if(e.target===overlay)closeCases()});
@@ -2422,11 +2569,13 @@
     const complaintModal = document.getElementById("ampComplaintModal");
     if (!complaintModal) return;
 
+    overlay.classList.remove("is-open");
+    overlay.setAttribute("aria-hidden", "true");
     complaintModal.classList.add("is-open");
     complaintModal.setAttribute("aria-hidden", "false");
-    document.body.style.overflow = "hidden";
-
+    setWorkspace(true);
     loadComplaintEmbed();
+    window.scrollTo({top:0,behavior:"smooth"});
   }
 
   function closeComplaint() {
@@ -2435,7 +2584,7 @@
 
     complaintModal.classList.remove("is-open");
     complaintModal.setAttribute("aria-hidden", "true");
-    document.body.style.overflow = "";
+    if(!overlay.classList.contains("is-open")) setWorkspace(false);
   }
 
   async function loadComplaintEmbed() {
@@ -2478,8 +2627,6 @@
           autoReauth="true"
           authService="pega"
           clientId="25967181096906812524"
-          UserIdentifier='Carmelita Williams'
-          Password='cnVsZXM='
           style="width:100%; min-height:650px; display:block;">
         </pega-embed>
       `;
