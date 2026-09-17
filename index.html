@@ -828,10 +828,25 @@
  </div>
  
  
- <div class=login-cta-wrapper style="display:flex;align-items:center;justify-content:center;gap:8px;color:#001e41;font-weight:600;font-size:16px;line-height:1;white-space:nowrap;">
- <i class="icon-person" aria-hidden=true style="font-size:22px;line-height:1;"></i>
- <span>Carmelita Williams</span>
- </div>
+ <div class="amp-operator-menu">
+  <button type="button" id="ampOperatorButton" class="amp-operator-button"
+          aria-expanded="false" aria-haspopup="true" aria-controls="ampOperatorDropdown">
+    <i class="icon-person" aria-hidden="true"></i>
+    <span class="amp-operator-name">Carmelita Williams</span>
+    <span class="amp-operator-chevron" aria-hidden="true">⌄</span>
+  </button>
+
+  <div id="ampOperatorDropdown" class="amp-operator-dropdown" role="menu" hidden>
+    <button type="button" class="amp-operator-menu-item" id="ampMyCasesButton" role="menuitem">
+      <span class="amp-menu-icon">▣</span>
+      <span><strong>My Cases</strong><small>View cases assigned to you</small></span>
+    </button>
+    <button type="button" class="amp-operator-menu-item" id="ampRaiseComplaintButton" role="menuitem">
+      <span class="amp-menu-icon">!</span>
+      <span><strong>Raise a Complaint</strong><small>Create a new complaint</small></span>
+    </button>
+  </div>
+</div>
  
  
  </div>
@@ -2204,6 +2219,119 @@
 
 
 
+
+
+<style id="amp-operator-menu-style">
+.amp-operator-menu{position:relative;display:inline-flex;align-items:center;margin-left:18px;z-index:10000}
+.amp-operator-button{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:#001e41;font:inherit;font-weight:600;font-size:16px;line-height:1;padding:10px 8px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.amp-operator-button:hover,.amp-operator-button:focus-visible{background:#f3f5f7;outline:none}
+.amp-operator-button .icon-person{font-size:22px;line-height:1}
+.amp-operator-chevron{font-size:18px;line-height:1;margin-top:-3px;transition:transform .18s ease}
+.amp-operator-button[aria-expanded=true] .amp-operator-chevron{transform:rotate(180deg)}
+.amp-operator-dropdown{position:absolute;top:calc(100% + 8px);right:0;width:285px;background:#fff;border:1px solid #dce1e6;border-radius:12px;box-shadow:0 12px 32px rgba(0,30,65,.16);padding:8px;overflow:hidden}
+.amp-operator-menu-item{width:100%;display:flex;align-items:center;gap:12px;text-align:left;border:0;background:transparent;border-radius:9px;padding:13px 12px;color:#001e41;cursor:pointer}
+.amp-operator-menu-item:hover,.amp-operator-menu-item:focus-visible{background:#f3f5f7;outline:none}
+.amp-operator-menu-item strong{display:block;font-size:15px;line-height:1.3}
+.amp-operator-menu-item small{display:block;color:#4c617a;font-size:12px;line-height:1.4;margin-top:2px}
+.amp-menu-icon{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:50%;background:#eef1ff;color:#0018f0;font-weight:700;font-size:16px}
+.amp-cases-overlay{position:fixed;inset:0;z-index:2147483000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(0,30,65,.48)}
+.amp-cases-overlay.is-open{display:flex}
+.amp-cases-dialog{width:min(820px,100%);max-height:min(760px,90vh);display:flex;flex-direction:column;background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(0,30,65,.28);overflow:hidden}
+.amp-cases-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 28px 20px;border-bottom:1px solid #e5e8ec}
+.amp-cases-header h2{margin:0;color:#001e41;font-size:26px;line-height:1.2}
+.amp-cases-header p{margin:5px 0 0;color:#4c617a;font-size:14px}
+.amp-cases-close{width:38px;height:38px;flex:0 0 38px;border:0;border-radius:50%;background:#f3f5f7;color:#001e41;font-size:22px;cursor:pointer}
+.amp-cases-close:hover,.amp-cases-close:focus-visible{background:#e5e8ec;outline:none}
+.amp-cases-body{padding:22px 28px 28px;overflow:auto}
+.amp-cases-loading,.amp-cases-error,.amp-cases-empty{padding:42px 20px;text-align:center;border-radius:12px;background:#f7f8fa;color:#4c617a}
+.amp-cases-error{color:#8a1f2d;background:#fff3f4}
+.amp-case-list{display:grid;gap:12px}
+.amp-case-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:18px;padding:18px 20px;border:1px solid #e1e5ea;border-radius:13px;background:#fff;box-shadow:0 3px 12px rgba(0,30,65,.06);transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.amp-case-card:hover{transform:translateY(-1px);border-color:#bfc7cf;box-shadow:0 8px 22px rgba(0,30,65,.10)}
+.amp-case-id-label{margin-bottom:4px;color:#738396;font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
+.amp-case-id{color:#001e41;font-size:17px;font-weight:700;word-break:break-word}
+.amp-case-status{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:#eef1ff;color:#0018f0;font-size:13px;font-weight:700;white-space:nowrap}
+.amp-case-status-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+@media(max-width:640px){.amp-operator-menu{margin-left:4px}.amp-operator-name{max-width:130px;overflow:hidden;text-overflow:ellipsis}.amp-cases-overlay{padding:12px}.amp-cases-header,.amp-cases-body{padding-left:18px;padding-right:18px}.amp-case-card{grid-template-columns:1fr;gap:10px}.amp-case-status{justify-self:start}}
+</style>
+
+<div id="ampCasesOverlay" class="amp-cases-overlay" aria-hidden="true">
+  <section class="amp-cases-dialog" role="dialog" aria-modal="true" aria-labelledby="ampCasesTitle">
+    <div class="amp-cases-header">
+      <div><h2 id="ampCasesTitle">My Cases</h2><p>Cases associated with your operator ID</p></div>
+      <button type="button" id="ampCasesClose" class="amp-cases-close" aria-label="Close My Cases">×</button>
+    </div>
+    <div id="ampCasesBody" class="amp-cases-body">
+      <div class="amp-cases-loading">Loading your cases...</div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  const CASES_API="https://omc-csfs-26.pegademo.com/prweb/api/CSAdmin/V1/cases/byoperator";
+  const operatorButton=document.getElementById("ampOperatorButton");
+  const dropdown=document.getElementById("ampOperatorDropdown");
+  const myCases=document.getElementById("ampMyCasesButton");
+  const complaint=document.getElementById("ampRaiseComplaintButton");
+  const overlay=document.getElementById("ampCasesOverlay");
+  const close=document.getElementById("ampCasesClose");
+  const body=document.getElementById("ampCasesBody");
+  if(!operatorButton||!dropdown||!myCases||!overlay)return;
+
+  function closeMenu(){dropdown.hidden=true;operatorButton.setAttribute("aria-expanded","false")}
+  operatorButton.addEventListener("click",function(e){e.stopPropagation();const open=dropdown.hidden;dropdown.hidden=!open;operatorButton.setAttribute("aria-expanded",String(open))});
+  document.addEventListener("click",function(e){if(!e.target.closest(".amp-operator-menu"))closeMenu()});
+
+  function openCases(){closeMenu();overlay.classList.add("is-open");overlay.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";loadCases()}
+  function closeCases(){overlay.classList.remove("is-open");overlay.setAttribute("aria-hidden","true");document.body.style.overflow=""}
+  myCases.addEventListener("click",openCases);
+  close.addEventListener("click",closeCases);
+  overlay.addEventListener("click",e=>{if(e.target===overlay)closeCases()});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();if(overlay.classList.contains("is-open"))closeCases()}});
+
+  // Reserved for the next change: wire Raise a Complaint to the complaint flow.
+  if(complaint)complaint.addEventListener("click",closeMenu);
+
+  function caseId(x){return x.caseID??x.caseId??x.caseid??x.CaseID??x.CaseId??x.id??x.ID??x.pyID??"—"}
+  function status(x){return x.caseStatus??x.caseStatusName??x.status??x.Status??x.CaseStatus??x.pyStatus??"—"}
+  function extract(p){
+    if(Array.isArray(p))return p;
+    for(const k of ["cases","Cases","items","Items","results","Results","data","Data"]){
+      if(Array.isArray(p?.[k]))return p[k];
+    }
+    if(p?.data&&typeof p.data==="object")return extract(p.data);
+    return [];
+  }
+  function render(cases){
+    if(!cases.length){body.innerHTML='<div class="amp-cases-empty">No cases were found for this operator.</div>';return}
+    const list=document.createElement("div");list.className="amp-case-list";
+    cases.forEach(x=>{
+      const card=document.createElement("div");card.className="amp-case-card";
+      const details=document.createElement("div");
+      const label=document.createElement("div");label.className="amp-case-id-label";label.textContent="Case ID";
+      const id=document.createElement("div");id.className="amp-case-id";id.textContent=String(caseId(x));
+      details.append(label,id);
+      const badge=document.createElement("div");badge.className="amp-case-status";
+      const dot=document.createElement("span");dot.className="amp-case-status-dot";
+      const text=document.createElement("span");text.textContent=String(status(x));
+      badge.append(dot,text);card.append(details,badge);list.appendChild(card);
+    });
+    body.replaceChildren(list);
+  }
+  async function loadCases(){
+    body.innerHTML='<div class="amp-cases-loading">Loading your cases...</div>';
+    try{
+      const response=await fetch(CASES_API,{method:"GET",headers:{"Accept":"application/json"},credentials:"include"});
+      if(!response.ok)throw new Error("API returned HTTP "+response.status);
+      render(extract(await response.json()));
+    }catch(error){
+      console.error("Unable to retrieve My Cases:",error);
+      body.innerHTML='<div class="amp-cases-error"><strong>Unable to load your cases.</strong><br>Please check the API connection, authentication, or browser CORS configuration.</div>';
+    }
+  }
+})();
+</script>
 
 <!-- Pega Web Embed Mashup -->
 <style id="pega-embed-host-style">
