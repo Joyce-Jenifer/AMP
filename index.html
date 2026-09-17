@@ -2525,12 +2525,60 @@
     });
     body.replaceChildren(list);
   }
+  function textValue(parent, tagName){
+    const node=parent.getElementsByTagName(tagName)[0];
+    return node ? node.textContent.trim() : "";
+  }
+
+  function extractXml(xmlText){
+    const parser=new DOMParser();
+    const xml=parser.parseFromString(xmlText.replace(/^\uFEFF/,""),"application/xml");
+
+    if(xml.getElementsByTagName("parsererror").length){
+      throw new Error("API returned invalid XML.");
+    }
+
+    const rows=[...xml.getElementsByTagName("rowdata")];
+
+    return rows.map(row=>({
+      caseID: textValue(row,"pyID") || textValue(row,"pxID") || textValue(row,"caseID"),
+      caseStatus: textValue(row,"pyStatusWork") || textValue(row,"caseStatus") || textValue(row,"status"),
+      pxCreateOperator: textValue(row,"pxCreateOperator")
+    })).filter(x=>x.caseID || x.caseStatus);
+  }
+
   async function loadCases(){
     body.innerHTML='<div class="amp-cases-loading">Loading your cases...</div>';
     try{
-      const response=await fetch(CASES_API,{method:"GET",mode:"cors",credentials:"omit",headers:{"Accept":"application/json"}});
+      const response=await fetch(CASES_API,{
+        method:"GET",
+        mode:"cors",
+        credentials:"omit",
+        headers:{"Accept":"application/json, text/xml, application/xml;q=0.9, */*;q=0.8"}
+      });
+
       if(!response.ok)throw new Error("API returned HTTP "+response.status);
-      render(extract(await response.json()));
+
+      // Pega may return XML even when JSON is requested. Read the response
+      // as text first, then handle either JSON or XML.
+      const raw=await response.text();
+      const trimmed=raw.trim();
+      let cases=[];
+
+      if(trimmed.startsWith("<")){
+        cases=extractXml(trimmed);
+      }else{
+        try{
+          cases=extract(JSON.parse(trimmed));
+        }catch(jsonError){
+          // Some responses may have an unexpected content type but still
+          // contain XML. Try XML before reporting the parsing error.
+          cases=extractXml(trimmed);
+        }
+      }
+
+      console.log("My Cases response parsed successfully:",cases);
+      render(cases);
     }catch(error){
       console.error("Unable to retrieve My Cases:",error);
       body.innerHTML='<div class="amp-cases-error"><strong>Unable to load your cases.</strong><br>Please check the API connection, authentication, or browser CORS configuration.</div>';
