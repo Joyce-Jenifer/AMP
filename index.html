@@ -1,3 +1,17 @@
+
+<style id="amp-pega-control-hide-fallback">
+/* Fallback for any Pega control exposed to the page stylesheet. */
+button[aria-label*="Active cases" i],
+button[title*="Active cases" i],
+button[aria-label*="Scroll to latest" i],
+button[title*="Scroll to latest" i],
+button[data-testid*="scroll-to-latest" i],
+button[data-testid*="latest-message" i]{
+  display:none !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+</style>
 <!DOCTYPE html> <html lang=en-AU style=scrollbar-gutter:unset><!--
  Page saved with SingleFile 
  url: https://www.amp.com.au/ 
@@ -2902,92 +2916,193 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 <script id="amp-hide-pega-chat-controls-final">
 (function(){
   /*
-   * Pega Agent Chat can render its controls inside CLOSED shadow roots.
-   * The interceptor above captures those roots before Pega creates them.
-   * We then hide only the Active cases control and the latest-message
-   * chevron, while leaving the rest of Sparky untouched.
+   * Hide only the Pega Agent Chat "Active cases" control and the
+   * circular "Scroll to latest message" control.
+   *
+   * Pega renders these controls dynamically and may nest them inside
+   * multiple Shadow DOM roots. This version recursively scans every
+   * captured/open root and hides the matching element itself or its
+   * nearest button ancestor.
    */
+
   const roots = window.__ampPegaShadowRoots || new Set();
-  const HIDE = function(el){
+
+  function hide(el){
+    if(!el || !el.style) return;
     el.style.setProperty('display','none','important');
     el.style.setProperty('visibility','hidden','important');
     el.style.setProperty('pointer-events','none','important');
-  };
-
-  function isTarget(btn){
-    if(!btn || btn.tagName !== 'BUTTON') return false;
-    const aria = (btn.getAttribute('aria-label') || '').trim().toLowerCase();
-    const title = (btn.getAttribute('title') || '').trim().toLowerCase();
-    const testid = (btn.getAttribute('data-testid') || '').trim().toLowerCase();
-    const text = (btn.textContent || '').trim().replace(/\s+/g,' ').toLowerCase();
-
-    const active = aria.startsWith('active cases') ||
-                   title.startsWith('active cases') ||
-                   text.startsWith('active cases');
-
-    const latest = aria.includes('scroll to latest') ||
-                   title.includes('scroll to latest') ||
-                   testid.includes('scroll-to-latest') ||
-                   aria.includes('latest message') ||
-                   title.includes('latest message');
-
-    return active || latest;
   }
 
-  function scanRoot(root){
-    if(!root || !root.querySelectorAll) return;
+  function value(el, attr){
+    return ((el.getAttribute && el.getAttribute(attr)) || '')
+      .trim()
+      .replace(/\s+/g,' ')
+      .toLowerCase();
+  }
+
+  function isLatestElement(el){
+    if(!el || !el.getAttribute) return false;
+
+    const aria = value(el,'aria-label');
+    const title = value(el,'title');
+    const testid = value(el,'data-testid');
+    const name = value(el,'name');
+    const text = (el.textContent || '')
+      .trim()
+      .replace(/\s+/g,' ')
+      .toLowerCase();
+
+    return (
+      aria.includes('scroll to latest') ||
+      aria.includes('latest message') ||
+      title.includes('scroll to latest') ||
+      title.includes('latest message') ||
+      testid.includes('scroll-to-latest') ||
+      testid.includes('latest-message') ||
+      name.includes('scroll-to-latest') ||
+      name.includes('latest-message') ||
+      text === 'scroll to latest message' ||
+      text === 'scroll to latest'
+    );
+  }
+
+  function isActiveCasesElement(el){
+    if(!el || !el.getAttribute) return false;
+
+    const aria = value(el,'aria-label');
+    const title = value(el,'title');
+    const testid = value(el,'data-testid');
+    const text = (el.textContent || '')
+      .trim()
+      .replace(/\s+/g,' ')
+      .toLowerCase();
+
+    return (
+      aria.startsWith('active cases') ||
+      title.startsWith('active cases') ||
+      testid.includes('active-cases') ||
+      text.startsWith('active cases')
+    );
+  }
+
+  function hideTargetOrButton(el){
+    if(!el) return;
+
+    if(isActiveCasesElement(el) || isLatestElement(el)){
+      const button = el.closest ? el.closest('button') : null;
+      hide(button || el);
+      return;
+    }
+
+    /* If the accessible label is on a descendant, hide its button ancestor. */
     try{
-      root.querySelectorAll('button').forEach(function(btn){
-        if(isTarget(btn)) HIDE(btn);
+      const descendants = el.querySelectorAll
+        ? el.querySelectorAll('[aria-label],[title],[data-testid],[name]')
+        : [];
+
+      descendants.forEach(function(child){
+        if(isActiveCasesElement(child) || isLatestElement(child)){
+          const button = child.closest ? child.closest('button') : null;
+          hide(button || child);
+        }
       });
     }catch(e){}
   }
 
-  function scanAll(){
-    roots.forEach(scanRoot);
-    // Also handle any normal/open roots that existed before this script.
+  function scanRoot(root, visited){
+    if(!root || !root.querySelectorAll) return;
+    visited = visited || new Set();
+    if(visited.has(root)) return;
+    visited.add(root);
+
+    try{
+      /* Scan every element, not just buttons. */
+      root.querySelectorAll('*').forEach(function(el){
+        hideTargetOrButton(el);
+
+        /* Recursively scan nested open Shadow DOM roots. */
+        if(el.shadowRoot){
+          scanRoot(el.shadowRoot, visited);
+        }
+      });
+    }catch(e){}
+
+    /* Also scan elements that may have been captured as closed roots. */
+    try{
+      roots.forEach(function(capturedRoot){
+        if(capturedRoot !== root){
+          scanRoot(capturedRoot, visited);
+        }
+      });
+    }catch(e){}
+  }
+
+  function scanDocument(){
+    const visited = new Set();
+
     try{
       document.querySelectorAll('*').forEach(function(el){
-        if(el.shadowRoot) scanRoot(el.shadowRoot);
+        hideTargetOrButton(el);
+
+        if(el.shadowRoot){
+          scanRoot(el.shadowRoot, visited);
+        }
+      });
+    }catch(e){}
+
+    try{
+      roots.forEach(function(root){
+        scanRoot(root, visited);
       });
     }catch(e){}
   }
 
   function observeRoot(root){
-    if(!root || root.__ampControlsObserver) return;
+    if(!root || root.__ampControlsObserverV5) return;
+
     try{
-      const observer = new MutationObserver(function(){ scanRoot(root); });
-      observer.observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-label','title','data-testid','class']});
-      try{ root.__ampControlsObserver = observer; }catch(e){}
+      const observer = new MutationObserver(function(){
+        scanRoot(root);
+      });
+
+      observer.observe(root,{
+        childList:true,
+        subtree:true,
+        attributes:true,
+        attributeFilter:['aria-label','title','data-testid','name','class']
+      });
+
+      try{ root.__ampControlsObserverV5 = observer; }catch(e){}
       scanRoot(root);
     }catch(e){}
   }
 
   function observeAll(){
-    roots.forEach(observeRoot);
     try{
+      roots.forEach(observeRoot);
+
       document.querySelectorAll('*').forEach(function(el){
-        if(el.shadowRoot) observeRoot(el.shadowRoot);
+        if(el.shadowRoot){
+          observeRoot(el.shadowRoot);
+        }
       });
     }catch(e){}
   }
 
   function run(){
-    scanAll();
+    scanDocument();
     observeAll();
   }
 
   run();
-  window.addEventListener('load',run);
+  window.addEventListener('load', run);
 
-  // Pega creates/replaces parts of Agent Chat asynchronously.
-  const timer=setInterval(function(){
-    run();
-  },250);
-
-  // Keep the protection active for the lifetime of the page.
-  // This is intentionally lightweight: it only inspects buttons in the
-  // captured Pega shadow roots.
+  /*
+   * Keep watching because Agent Chat can recreate its toolbar/scroll
+   * controls after messages arrive or after the chat state changes.
+   */
+  setInterval(run, 300);
 })();
 </script>
 
