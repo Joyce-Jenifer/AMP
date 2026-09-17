@@ -1024,7 +1024,7 @@ It also displays the home loan repayment amount based on either the AMP Essentia
 &lt;i class=&quot;icon-ww icon-ww-info va-m&quot;&gt;&lt;/i&gt;
 &lt;span class=&quot;opt-sr-only addon__text ng-binding&quot;&gt;About this calculator&lt;/span&gt;
 &lt;/button&gt;
-&lt;button id=&quot;amp-apply-now-inline&quot; onclick=&quot;window.parent.postMessage({type:'AMP_APPLY_NOW'}, '*')&quot; style=&quot;margin-left:16px!important;padding:10px 22px!important;background:#00D5AC!important;color:#001E41!important;border:0!important;font-size:16px!important;font-weight:600!important;line-height:1.2!important;cursor:pointer!important;white-space:nowrap!important;border-radius:0!important;vertical-align:middle!important;&quot; type=&quot;button&quot;&gt;Apply Now&lt;/button&gt;&lt;/div&gt;
+&lt;button id=&quot;amp-apply-now-inline&quot; onclick=&quot;window.parent.postMessage({type:'AMP_APPLY_NOW'}, '*')&quot; style=&quot;margin-left:16px!important;padding:10px 22px!important;background:#00D5AC!important;color:#001E41!important;border:0!important;font-size:16px!important;font-weight:600!important;line-height:1.2!important;cursor:pointer!important;white-space:nowrap!important;border-radius:0!important;vertical-align:middle!important;&quot; type=&quot;button&quot;&gt;Download Result&lt;/button&gt;&lt;/div&gt;
 &lt;/div&gt;
 &lt;/app-utils&gt;
 &lt;/div&gt;
@@ -1036,43 +1036,604 @@ It also displays the home loan repayment amount based on either the AMP Essentia
 </div>
 
 
-<div id="pega-apply-container" style="width:100%;height:0;max-height:0;overflow:hidden;opacity:0;transition:height .45s ease, opacity .25s ease;padding:0;margin:0;box-sizing:border-box;background:#ffffff;">
-<script src="https://omc-csfs-26.pegademo.com/prweb/PRRestService/c11nsvc/v1/pega-embed.js"></script>
-<pega-embed action="createCase" appalias="DemoSA" assignmentheader="false" authservice="pega" autoreauth="true" casepage="assignment" casetypeid="PegaCRM-Work-SFA-Lead-Ind" clientid="95769441382049129878" UserIdentifier="Srikanth" Password="cnVsZXM=" id="theEmbed" pegaserverurl="https://omc-csfs-26.pegademo.com/prweb/" style="display:block;width:100%;height:900px;min-height:900px;overflow:auto;" themeid="AMP">
-</pega-embed>
-</div><script>
-(function(){
-  var container = document.getElementById('pega-apply-container');
-  if (!container) return;
+<style>
+/* AMP result-download modal */
 
-  window.addEventListener('message', function(event){
-    if (!event.data || event.data.type !== 'AMP_APPLY_NOW') return;
+#pega-apply-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 30, 65, 0.65);
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
 
-    var isOpen = container.dataset.open === 'true';
-    if (isOpen) {
-      container.style.height = '0px';
-      container.style.maxHeight = '0px';
-      container.style.opacity = '0';
-      container.style.overflow = 'hidden';
-      container.dataset.open = 'false';
+#pega-apply-modal.is-open {
+  display: flex;
+}
+
+#pega-apply-modal-dialog {
+  position: relative;
+  width: min(1020px, 82vw);
+  min-height: 0;
+  height: fit-content;
+  max-width: 1020px;
+  max-height: calc(100vh - 48px);
+  margin: 0;
+  background: #ffffff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+#pega-apply-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 2147483647;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #001E41;
+  font-size: 30px;
+  line-height: 40px;
+  font-weight: 400;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+#pega-apply-close:hover {
+  background: #f3f5f7;
+}
+
+#pega-modal-header {
+  height: 82px;
+  padding: 13px 62px 15px 28px;
+  box-sizing: border-box;
+  border-bottom: 1px solid #e3e7eb;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+#pega-modal-header-title {
+  margin: 0;
+  color: #001E41;
+  font-size: 21px;
+  line-height: 1.2;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#pega-modal-header-icon {
+  width: 62px;
+  height: 30px;
+  flex: 0 0 62px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  margin-top: 16px;
+}
+
+#pega-modal-header-icon img {
+  display: block;
+  width: 62px;
+  height: auto;
+  max-height: 30px;
+  object-fit: contain;
+}
+
+
+
+#pega-modal-header-subtitle {
+  margin: 4px 0 0 74px;
+  color: #4c617a;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+#pega-apply-embed-container {
+  width: 100%;
+  height: 220px !important; /* Change this value to control the form box height */
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: hidden !important;
+  overflow-y: hidden !important;
+  overflow-x: hidden !important;
+  background: #ffffff;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  padding-top: 0;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+#pega-apply-embed-container > pega-embed {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+#pega-apply-modal-dialog.success-mode {
+  width: min(900px, 82vw);
+  max-width: 900px;
+  height: min(360px, calc(100vh - 48px));
+  min-height: min(360px, calc(100vh - 48px));
+}
+
+#pega-apply-modal-dialog.success-mode #pega-modal-header {
+  display: none;
+}
+
+#pega-apply-modal-dialog.success-mode #pega-submit-success {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100% !important;
+  min-height: 0 !important;
+  flex-basis: auto !important;
+  padding: 24px 36px;
+}
+
+#pega-submit-success {
+  display: none;
+  position: relative;
+  width: 100%;
+  height: 220px;
+  min-height: 220px;
+  flex: 0 0 220px;
+  background: #ffffff;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 28px 40px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+#pega-submit-success.is-visible {
+  display: flex;
+}
+
+.pega-success-content {
+  max-width: 560px;
+}
+
+.pega-success-icon {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: #198754;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  font-weight: 700;
+}
+
+.pega-success-title {
+  margin: 0 0 12px;
+  color: #001E41;
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.pega-success-message {
+  margin: 0;
+  color: #4c617a;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+@media (max-width: 700px) {
+
+  #pega-apply-modal {
+    padding: 10px;
+  }
+
+  #pega-apply-modal-dialog {
+    width: 100%;
+    min-height: 0;
+    height: fit-content;
+    max-height: calc(100vh - 20px);
+  }
+
+  #pega-apply-modal-dialog.success-mode {
+    width: 100%;
+    height: min(360px, calc(100vh - 20px));
+    min-height: min(360px, calc(100vh - 20px));
+  }
+
+  #pega-apply-modal-dialog.success-mode #pega-submit-success {
+    padding: 24px 20px;
+  }
+
+  #pega-submit-success {
+    min-height: 220px;
+    flex-basis: 220px;
+    padding: 24px 20px;
+  }
+
+  #pega-modal-header {
+    height: 84px;
+    padding: 14px 52px 14px 20px;
+  }
+
+  #pega-modal-header-title {
+    font-size: 19px;
+    gap: 10px;
+  }
+
+  #pega-modal-header-icon {
+    width: 54px;
+    flex-basis: 54px;
+  }
+
+  #pega-modal-header-icon img {
+    width: 54px;
+    max-height: 27px;
+  }
+
+  #pega-modal-header-subtitle {
+    margin: 5px 0 0 64px;
+    font-size: 13px;
+  }
+
+  #pega-apply-embed-container {
+    min-height: 0;
+    max-height: none;
+    height: auto;
+    overflow: hidden;
+    overflow-y: hidden;
+    padding-top: 0;
+  }
+
+  #pega-apply-embed-container > pega-embed {
+    min-height: 0;
+    height: auto;
+  }
+
+  #pega-apply-close {
+    top: 8px;
+    right: 8px;
+  }
+}
+
+</style>
+
+<div id="pega-apply-modal" aria-hidden="true">
+
+  <div
+    id="pega-apply-modal-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-label="What's next?"
+  >
+
+    <button
+      id="pega-apply-close"
+      type="button"
+      aria-label="Close"
+    >&times;</button>
+
+    <div id="pega-modal-header">
+
+      <h2 id="pega-modal-header-title">
+
+        <span
+          id="pega-modal-header-icon"
+          aria-hidden="true"
+        >
+          <img
+            src="data:image/png;base64,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"
+            alt="AMP"
+          />
+        </span>
+
+        What’s next?
+
+      </h2>
+
+      <p id="pega-modal-header-subtitle">
+        Just a few details and we’ll take it from here.
+      </p>
+
+    </div>
+
+    <div id="pega-apply-embed-container">
+
+      <script src="https://omc-csfs-26.pegademo.com/prweb/PRRestService/c11nsvc/v1/pega-embed.js"></script>
+
+      <pega-embed
+        action="createCase"
+        appalias="DemoSA"
+        assignmentheader="false"
+        authservice="pega"
+        autoreauth="true"
+        casepage="assignment"
+        casetypeid="PegaCRM-Work-SFA-Lead-Ind"
+        clientid="95769441382049129878"
+        UserIdentifier="Srikanth"
+        Password="cnVsZXM="
+        id="theEmbed"
+        pegaserverurl="https://omc-csfs-26.pegademo.com/prweb/"
+        themeid="AMP">
+      </pega-embed>
+
+    </div>
+
+    <div
+      id="pega-submit-success"
+      aria-live="polite"
+    >
+
+      <div class="pega-success-content">
+
+        <div
+          class="pega-success-icon"
+          aria-hidden="true"
+        >
+          ✓
+        </div>
+
+        <h2 class="pega-success-title">
+          Thanks, we’ve got you!
+        </h2>
+
+        <p class="pega-success-message">
+          We’ll send you the details by email shortly, and a lending consultant will be in touch soon.
+        </p>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+(function () {
+
+  var modal = document.getElementById('pega-apply-modal');
+  var closeButton = document.getElementById('pega-apply-close');
+  var embed = document.getElementById('theEmbed');
+  var embedContainer = document.getElementById('pega-apply-embed-container');
+  var successPanel = document.getElementById('pega-submit-success');
+
+  if (!modal || !closeButton || !embed || !successPanel) {
+    return;
+  }
+
+  /*
+   * ============================================================
+   * PEGA FORM BOX HEIGHT
+   * ============================================================
+   *
+   * Change ONLY this number when you want a different form-box
+   * height. For example:
+   *
+   *   200 = shorter box
+   *   220 = current size
+   *   240 = taller box
+   *
+   * Pega can add an inline height after the Web Embed loads.
+   * This script continuously reapplies the value below.
+   */
+  var PEGA_FORM_HEIGHT = 220;
+
+  function applySuccessPanelHeight() {
+    if (!successPanel) {
       return;
     }
 
-    container.style.height = '900px';
-    container.style.maxHeight = '900px';
-    container.style.opacity = '1';
-    container.style.overflow = 'visible';
-    container.dataset.open = 'true';
+    var successHeight = PEGA_FORM_HEIGHT + 'px';
 
-    setTimeout(function(){
-      container.scrollIntoView({behavior:'smooth', block:'start'});
-    }, 120);
+    successPanel.style.setProperty('height', successHeight, 'important');
+    successPanel.style.setProperty('min-height', successHeight, 'important');
+    successPanel.style.setProperty('flex-basis', successHeight, 'important');
+  }
+
+  function applyPegaFormHeight() {
+    if (!embedContainer) {
+      return;
+    }
+
+    var heightValue = PEGA_FORM_HEIGHT + 'px';
+
+    embedContainer.style.setProperty('height', heightValue, 'important');
+    embedContainer.style.setProperty('min-height', '0', 'important');
+    embedContainer.style.setProperty('max-height', 'none', 'important');
+    embedContainer.style.setProperty('overflow', 'hidden', 'important');
+    embedContainer.style.setProperty('overflow-y', 'hidden', 'important');
+    embedContainer.style.setProperty('overflow-x', 'hidden', 'important');
+    embedContainer.style.setProperty('padding-bottom', '0', 'important');
+    embedContainer.style.setProperty('margin-bottom', '0', 'important');
+
+    /*
+     * Also override any inline sizing that Pega places on
+     * the <pega-embed> custom element itself.
+     */
+    embed.style.setProperty('height', '100%', 'important');
+    embed.style.setProperty('min-height', '0', 'important');
+    embed.style.setProperty('max-height', 'none', 'important');
+    embed.style.setProperty('margin', '0', 'important');
+    embed.style.setProperty('padding', '0', 'important');
+    embed.style.setProperty('overflow', 'visible', 'important');
+  }
+
+  function openModal() {
+
+    /*
+     * Move the modal to <body> so sticky AEM headers
+     * and parent stacking contexts cannot clip it.
+     */
+
+    if (modal.parentElement !== document.body) {
+      document.body.appendChild(modal);
+    }
+
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+
+    successPanel.classList.remove('is-visible');
+    document.getElementById('pega-apply-modal-dialog').classList.remove('success-mode');
+
+    embedContainer.style.display = 'block';
+    applyPegaFormHeight();
+    applySuccessPanelHeight();
+
+    /*
+     * Pega may write its own inline height after opening.
+     * Reapply our configured height after the embed initializes.
+     */
+    setTimeout(applyPegaFormHeight, 0);
+    setTimeout(applyPegaFormHeight, 100);
+    setTimeout(applyPegaFormHeight, 250);
+    setTimeout(applyPegaFormHeight, 500);
+    setTimeout(applyPegaFormHeight, 1000);
+
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+
+    document.body.style.overflow = '';
+
+    /*
+     * Reset the Web Embed so the next Download Result starts fresh.
+     */
+
+    try {
+
+      if (typeof embed.reload === 'function') {
+        embed.reload();
+      }
+
+    } catch (e) {
+
+      /*
+       * Keep the modal close action working
+       * even if reload is unavailable.
+       */
+
+    }
+
+    setTimeout(function () {
+
+      successPanel.classList.remove('is-visible');
+      document.getElementById('pega-apply-modal-dialog').classList.remove('success-mode');
+
+      embedContainer.style.display = 'block';
+      applyPegaFormHeight();
+      applySuccessPanelHeight();
+
+    }, 150);
+  }
+
+  /*
+   * If Pega changes the inline style again, immediately restore
+   * the configured height.
+   */
+  if (typeof MutationObserver !== 'undefined') {
+    try {
+      var embedContainerObserver = new MutationObserver(function () {
+        applyPegaFormHeight();
+      });
+
+      embedContainerObserver.observe(embedContainer, {
+        attributes: true,
+        attributeFilter: ['style']
+      });
+    } catch (e) {
+      /* MutationObserver is optional. */
+    }
+  }
+
+  /*
+   * Listen for the Download Result button
+   * from the AMP calculator.
+   */
+
+  window.addEventListener('message', function (event) {
+
+    if (!event.data || event.data.type !== 'AMP_APPLY_NOW') {
+      return;
+    }
+
+    openModal();
+
   });
+
+  /*
+   * Pega Web Embed fires embedprocessingend
+   * when case processing is complete.
+   */
+
+  embed.addEventListener('embedprocessingend', function () {
+
+    embedContainer.style.display = 'none';
+
+    /* Switch the dialog into the full thank-you view. */
+    document.getElementById('pega-apply-modal-dialog').classList.add('success-mode');
+    successPanel.classList.add('is-visible');
+
+  });
+
+
+  closeButton.addEventListener('click', function () {
+
+    closeModal();
+
+  });
+
+  modal.addEventListener('click', function (event) {
+
+    if (event.target === modal) {
+      closeModal();
+    }
+
+  });
+
+  document.addEventListener('keydown', function (event) {
+
+    if (
+      event.key === 'Escape' &&
+      modal.classList.contains('is-open')
+    ) {
+      closeModal();
+    }
+
+  });
+
 })();
 </script>
 
 </div>
-<div class="experiencefragment aem-GridColumn aem-GridColumn--default--12">
+<div class="experiencefragment<div class="experiencefragment aem-GridColumn aem-GridColumn--default--12">
 <div class="cmp-experiencefragment cmp-experiencefragment--footer" id="experiencefragment-452fd3ba9a">
 <div class="cmp-container" id="container-251ff9b7dc">
 <div class="aem-Grid aem-Grid--12 aem-Grid--default--12">
