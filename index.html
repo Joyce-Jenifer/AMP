@@ -2322,7 +2322,7 @@
   async function loadCases(){
     body.innerHTML='<div class="amp-cases-loading">Loading your cases...</div>';
     try{
-      const response=await fetch(CASES_API,{method:"GET",headers:{"Accept":"application/json"},credentials:"include"});
+      const response=await fetch(CASES_API,{method:"GET",headers:{"Accept":"application/json"}});
       if(!response.ok)throw new Error("API returned HTTP "+response.status);
       render(extract(await response.json()));
     }catch(error){
