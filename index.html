@@ -2653,16 +2653,83 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
     }
   });
 
-  function caseId(x){return x.caseID??x.caseId??x.caseid??x.CaseID??x.CaseId??x.id??x.ID??x.pyID??"—"}
-  function status(x){return x.caseStatus??x.caseStatusName??x.status??x.Status??x.CaseStatus??x.pyStatus??"—"}
-  function extract(p){
-    if(Array.isArray(p))return p;
-    for(const k of ["cases","Cases","items","Items","results","Results","data","Data"]){
-      if(Array.isArray(p?.[k]))return p[k];
+  function getField(obj, names){
+    if(!obj || typeof obj !== "object") return "";
+    for(const name of names){
+      if(Object.prototype.hasOwnProperty.call(obj,name) && obj[name] !== null && obj[name] !== undefined){
+        const value=obj[name];
+        if(typeof value === "object" && value !== null){
+          if(Object.prototype.hasOwnProperty.call(value,"value")) return String(value.value ?? "");
+          if(Object.prototype.hasOwnProperty.call(value,"Value")) return String(value.Value ?? "");
+        }
+        return String(value);
+      }
     }
-    if(p?.data&&typeof p.data==="object")return extract(p.data);
-    return [];
+    const wanted=names.map(n=>String(n).toLowerCase().replace(/[^a-z0-9]/g,""));
+    for(const key of Object.keys(obj)){
+      const normalized=key.toLowerCase().replace(/[^a-z0-9]/g,"");
+      if(wanted.includes(normalized)){
+        const value=obj[key];
+        if(value !== null && value !== undefined){
+          if(typeof value === "object" && value !== null){
+            if(Object.prototype.hasOwnProperty.call(value,"value")) return String(value.value ?? "");
+            if(Object.prototype.hasOwnProperty.call(value,"Value")) return String(value.Value ?? "");
+          }
+          return String(value);
+        }
+      }
+    }
+    return "";
   }
+
+  function caseId(x){
+    return getField(x,["caseID","caseId","caseid","CaseID","CaseId","id","ID","pyID","pxID"]) || "—";
+  }
+  function status(x){
+    return getField(x,["CaseStatus","caseStatus","caseStatusName","status","Status","pyStatusWork","pyStatus"]) || "—";
+  }
+  function updateDateTime(x){
+    return getField(x,["pxUpdateDateTime","PxUpdateDateTime","pxupdatedatetime","UpdateDateTime","LastUpdated","lastUpdated"]) || "—";
+  }
+  function complaintCategory(x){
+    return getField(x,["ComplaintCategory","complaintCategory","Complaint Category","complaintcategory"]) || "—";
+  }
+  function complaintDetails(x){
+    return getField(x,["ComplaintDetails","complaintDetails","Complaint Details","complaintdetails","ComplaintDescription","complaintDescription","Description"]) || "—";
+  }
+
+  function formatDateTime(value){
+    const raw=String(value ?? "").trim();
+    if(!raw || raw === "—") return "—";
+
+    // Pega timestamps can look like 20260918T101530.123 GMT+0530.
+    const pegaMatch=raw.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(?:\.(\d+))?/);
+    let date=null;
+    if(pegaMatch){
+      date=new Date(
+        Number(pegaMatch[1]),Number(pegaMatch[2])-1,Number(pegaMatch[3]),
+        Number(pegaMatch[4]),Number(pegaMatch[5]),Number(pegaMatch[6]),
+        Number((pegaMatch[7]||"0").slice(0,3).padEnd(3,"0"))
+      );
+    }else{
+      const parsed=Date.parse(raw);
+      if(!Number.isNaN(parsed)) date=new Date(parsed);
+    }
+
+    if(!date || Number.isNaN(date.getTime())) return raw;
+    return new Intl.DateTimeFormat("en-AU",{
+      day:"2-digit",month:"short",year:"numeric",
+      hour:"2-digit",minute:"2-digit",hour12:true
+    }).format(date);
+  }
+
+  function statusClass(statusText){
+    const normalized=String(statusText).toLowerCase();
+    if(normalized.includes("resolved") || normalized.includes("completed") || normalized.includes("closed")) return "amp-status-resolved";
+    if(normalized.includes("pending") || normalized.includes("waiting")) return "amp-status-pending";
+    return "amp-status-open";
+  }
+
   function render(cases){
     const titleBlock=document.querySelector("#ampCasesTitle")?.parentElement;
     if(titleBlock){
@@ -2670,38 +2737,90 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
       if(!countBadge){
         countBadge=document.createElement("span");
         countBadge.id="ampCasesCountBadge";
-        countBadge.style.cssText="display:inline-flex;align-items:center;margin-top:10px;padding:5px 10px;border-radius:999px;background:#eef6fb;color:#006c9f;font-size:12px;font-weight:700;";
+        countBadge.className="amp-cases-count-badge";
         titleBlock.appendChild(countBadge);
       }
       countBadge.textContent=cases.length+" case"+(cases.length===1?"":"s");
     }
-    if(!cases.length){body.innerHTML='<div class="amp-cases-empty">No cases were found for this operator.</div>';return}
-    const list=document.createElement("div");list.className="amp-case-list";
-    cases.forEach(x=>{
-      const card=document.createElement("div");card.className="amp-case-card";
-      const details=document.createElement("div");
-      const label=document.createElement("div");label.className="amp-case-id-label";label.textContent="Case ID";
-      const id=document.createElement("div");id.className="amp-case-id";id.textContent=String(caseId(x));
-      details.append(label,id);
-      const badge=document.createElement("div");
-      const statusText=String(status(x));
-      const normalizedStatus=statusText.toLowerCase();
-      let statusClass="amp-status-open";
-      if(normalizedStatus.includes("resolved") || normalizedStatus.includes("completed")){
-        statusClass="amp-status-resolved";
-      }else if(normalizedStatus.includes("pending")){
-        statusClass="amp-status-pending";
-      }
-      badge.className="amp-case-status "+statusClass;
-      const dot=document.createElement("span");dot.className="amp-case-status-dot";
-      const text=document.createElement("span");text.textContent=statusText;
-      badge.append(dot,text);card.append(details,badge);list.appendChild(card);
+
+    if(!cases.length){
+      body.innerHTML='<div class="amp-cases-empty">No cases were found for this operator.</div>';
+      return;
+    }
+
+    const tableWrap=document.createElement("div");
+    tableWrap.className="amp-cases-table-wrap";
+
+    const table=document.createElement("table");
+    table.className="amp-cases-table";
+    table.setAttribute("aria-label","My Cases");
+
+    const thead=document.createElement("thead");
+    const headerRow=document.createElement("tr");
+    ["Case ID","Last Updated","Complaint Category","Complaint Details","Case Status"].forEach(label=>{
+      const th=document.createElement("th");
+      th.scope="col";
+      th.textContent=label;
+      headerRow.appendChild(th);
     });
-    body.replaceChildren(list);
+    thead.appendChild(headerRow);
+
+    const tbody=document.createElement("tbody");
+    cases.forEach(x=>{
+      const row=document.createElement("tr");
+
+      const idCell=document.createElement("td");
+      idCell.className="amp-case-id-cell";
+      const id=document.createElement("span");
+      id.className="amp-case-id";
+      id.textContent=String(caseId(x));
+      idCell.appendChild(id);
+
+      const updatedCell=document.createElement("td");
+      updatedCell.className="amp-case-updated-cell";
+      updatedCell.textContent=formatDateTime(updateDateTime(x));
+
+      const categoryCell=document.createElement("td");
+      categoryCell.className="amp-case-category-cell";
+      categoryCell.textContent=String(complaintCategory(x));
+
+      const detailsCell=document.createElement("td");
+      detailsCell.className="amp-case-details-cell";
+      detailsCell.textContent=String(complaintDetails(x));
+      detailsCell.title=String(complaintDetails(x));
+
+      const statusCell=document.createElement("td");
+      statusCell.className="amp-case-status-cell";
+      const badge=document.createElement("span");
+      const statusText=String(status(x));
+      badge.className="amp-case-status "+statusClass(statusText);
+      const dot=document.createElement("span");
+      dot.className="amp-case-status-dot";
+      const statusLabel=document.createElement("span");
+      statusLabel.textContent=statusText;
+      badge.append(dot,statusLabel);
+      statusCell.appendChild(badge);
+
+      row.append(idCell,updatedCell,categoryCell,detailsCell,statusCell);
+      tbody.appendChild(row);
+    });
+
+    table.append(thead,tbody);
+    tableWrap.appendChild(table);
+    body.replaceChildren(tableWrap);
   }
+
   function textValue(parent, tagName){
     const node=parent.getElementsByTagName(tagName)[0];
     return node ? node.textContent.trim() : "";
+  }
+
+  function xmlField(row, names){
+    for(const name of names){
+      const value=textValue(row,name);
+      if(value) return value;
+    }
+    return "";
   }
 
   function extractXml(xmlText){
@@ -2715,10 +2834,13 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
     const rows=[...xml.getElementsByTagName("rowdata")];
 
     return rows.map(row=>({
-      caseID: textValue(row,"pyID") || textValue(row,"pxID") || textValue(row,"caseID"),
-      caseStatus: textValue(row,"pyStatusWork") || textValue(row,"caseStatus") || textValue(row,"status"),
-      pxCreateOperator: textValue(row,"pxCreateOperator")
-    })).filter(x=>x.caseID || x.caseStatus);
+      caseID: xmlField(row,["pyID","pxID","caseID","caseId"]),
+      caseStatus: xmlField(row,["CaseStatus","caseStatus","pyStatusWork","status"]),
+      pxUpdateDateTime: xmlField(row,["pxUpdateDateTime","PxUpdateDateTime","UpdateDateTime","LastUpdated"]),
+      ComplaintCategory: xmlField(row,["ComplaintCategory","complaintCategory","Complaint Category"]),
+      ComplaintDetails: xmlField(row,["ComplaintDetails","complaintDetails","Complaint Details","ComplaintDescription","Description"]),
+      pxCreateOperator: xmlField(row,["pxCreateOperator"])
+    })).filter(x=>x.caseID || x.caseStatus || x.ComplaintCategory || x.ComplaintDetails || x.pxUpdateDateTime);
   }
 
   async function loadCases(){
@@ -3080,6 +3202,125 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 })();
 </script>
 
+<style id="amp-my-cases-table-style">
+/* My Cases table view */
+#ampCasesOverlay .amp-cases-body{
+  width:min(1380px,100%) !important;
+  padding:28px max(28px,3vw) 54px !important;
+}
+#ampCasesOverlay .amp-cases-count-badge{
+  display:inline-flex !important;
+  align-items:center !important;
+  margin-left:10px !important;
+  padding:5px 10px !important;
+  border-radius:999px !important;
+  background:#eef6fb !important;
+  color:#006c9f !important;
+  font-size:12px !important;
+  font-weight:700 !important;
+  vertical-align:middle !important;
+}
+#ampCasesOverlay .amp-cases-table-wrap{
+  width:100% !important;
+  overflow-x:auto !important;
+  background:#fff !important;
+  border:1px solid #dfe7ed !important;
+  border-radius:14px !important;
+  box-shadow:0 6px 22px rgba(0,30,65,.07) !important;
+}
+#ampCasesOverlay .amp-cases-table{
+  width:100% !important;
+  min-width:980px !important;
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  table-layout:fixed !important;
+  color:#001e41 !important;
+  background:#fff !important;
+}
+#ampCasesOverlay .amp-cases-table th{
+  padding:15px 16px !important;
+  background:#f4f8fa !important;
+  border-bottom:1px solid #dfe7ed !important;
+  color:#36536c !important;
+  font-size:12px !important;
+  font-weight:800 !important;
+  letter-spacing:.055em !important;
+  text-align:left !important;
+  text-transform:uppercase !important;
+  white-space:nowrap !important;
+}
+#ampCasesOverlay .amp-cases-table th:nth-child(1){width:17% !important}
+#ampCasesOverlay .amp-cases-table th:nth-child(2){width:18% !important}
+#ampCasesOverlay .amp-cases-table th:nth-child(3){width:18% !important}
+#ampCasesOverlay .amp-cases-table th:nth-child(4){width:32% !important}
+#ampCasesOverlay .amp-cases-table th:nth-child(5){width:15% !important}
+#ampCasesOverlay .amp-cases-table td{
+  padding:17px 16px !important;
+  border-bottom:1px solid #edf1f4 !important;
+  vertical-align:middle !important;
+  font-size:14px !important;
+  line-height:1.45 !important;
+  background:#fff !important;
+}
+#ampCasesOverlay .amp-cases-table tbody tr:last-child td{border-bottom:0 !important}
+#ampCasesOverlay .amp-cases-table tbody tr:hover td{background:#f8fbfd !important}
+#ampCasesOverlay .amp-case-id-cell{font-weight:700 !important}
+#ampCasesOverlay .amp-case-id{
+  color:#006c9f !important;
+  font-size:14px !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+  word-break:break-word !important;
+}
+#ampCasesOverlay .amp-case-updated-cell{
+  color:#536b80 !important;
+  white-space:nowrap !important;
+  font-size:13px !important;
+}
+#ampCasesOverlay .amp-case-category-cell{
+  color:#193b55 !important;
+  font-weight:650 !important;
+}
+#ampCasesOverlay .amp-case-details-cell{
+  color:#4d6478 !important;
+  max-width:0 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+}
+#ampCasesOverlay .amp-case-status-cell{white-space:nowrap !important}
+#ampCasesOverlay .amp-case-status{
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:7px !important;
+  padding:7px 11px !important;
+  border-radius:999px !important;
+  font-size:12px !important;
+  font-weight:750 !important;
+  line-height:1 !important;
+  white-space:nowrap !important;
+}
+#ampCasesOverlay .amp-case-status.amp-status-open{
+  background:#eaf6fb !important;
+  color:#006f9f !important;
+  border:1px solid #cde8f2 !important;
+}
+#ampCasesOverlay .amp-case-status.amp-status-pending{
+  background:#fff5e8 !important;
+  color:#a65a00 !important;
+  border:1px solid #f2ddbc !important;
+}
+#ampCasesOverlay .amp-case-status.amp-status-resolved{
+  background:#eaf8f1 !important;
+  color:#17764b !important;
+  border:1px solid #cce9d9 !important;
+}
+#ampCasesOverlay .amp-case-status-dot{width:6px !important;height:6px !important;border-radius:50% !important;background:currentColor !important}
+@media(max-width:640px){
+  #ampCasesOverlay .amp-cases-body{padding:20px 14px 40px !important}
+  #ampCasesOverlay .amp-cases-count-badge{margin-left:7px !important}
+}
+</style>
 </body>
 
 
