@@ -1055,13 +1055,14 @@ It also displays the home loan repayment amount based on either the AMP Essentia
 
 #pega-apply-modal.is-open {
   display: flex;
+  overflow: hidden;
 }
 
 #pega-apply-modal-dialog {
   position: relative;
   width: min(1020px, 82vw);
-  min-height: 0;
-  height: fit-content;
+  min-height: 0 !important;
+  height: 434px !important;
   max-width: 1020px;
   max-height: calc(100vh - 48px);
   min-height: 0;
@@ -1148,7 +1149,7 @@ It also displays the home loan repayment amount based on either the AMP Essentia
 
 #pega-apply-embed-container {
   width: 100%;
-  height: 620px !important; /* Change this value to control the form box height */
+  height: 373px !important; /* Match the actual Pega form content; no extra space below buttons */
   min-height: 0 !important;
   max-height: none !important;
   overflow: hidden !important;
@@ -1254,10 +1255,10 @@ It also displays the home loan repayment amount based on either the AMP Essentia
 
   #pega-apply-modal-dialog {
     width: 100%;
-    min-height: 0;
-    height: fit-content;
+    min-height: 0 !important;
+    height: min(434px, calc(100vh - 20px)) !important;
     max-height: calc(100vh - 20px);
-    overflow-y: auto;
+    overflow: hidden;
   }
 
   #pega-apply-modal-dialog.success-mode {
@@ -1304,7 +1305,7 @@ It also displays the home loan repayment amount based on either the AMP Essentia
   #pega-apply-embed-container {
     min-height: 0;
     max-height: none;
-    height: 620px;
+    height: 373px;
     overflow: hidden;
     overflow-y: hidden;
     padding-top: 0;
@@ -1328,6 +1329,7 @@ It also displays the home loan repayment amount based on either the AMP Essentia
   <div
     id="pega-apply-modal-dialog"
     role="dialog"
+    style="height:434px !important; max-height:calc(100vh - 48px) !important; min-height:0 !important; width:min(1020px,82vw) !important; max-width:1020px !important;"
     aria-modal="true"
     aria-label="What's next?"
   >
@@ -1432,11 +1434,22 @@ It also displays the home loan repayment amount based on either the AMP Essentia
    * PEGA FORM BOX HEIGHT
    * ============================================================
    *
-   * Form is sized to 620px so all fields and the Submit button
+   * Form is sized to fit all fields and the Submit button without extra white space
    * in the Pega Web Embed are visible without being clipped.
    * Increase this value if additional fields are added later.
    */
-  var PEGA_FORM_HEIGHT = 620;
+  var PEGA_FORM_HEIGHT = 373;
+  var PEGA_DIALOG_HEIGHT = 455;
+
+  function applyDialogHeight() {
+    var dialog = document.getElementById('pega-apply-modal-dialog');
+    if (!dialog) { return; }
+    dialog.style.setProperty('height', PEGA_DIALOG_HEIGHT + 'px', 'important');
+    dialog.style.setProperty('min-height', '0', 'important');
+    dialog.style.setProperty('max-height', 'calc(100vh - 48px)', 'important');
+    dialog.style.setProperty('width', 'min(1020px, 82vw)', 'important');
+    dialog.style.setProperty('max-width', '1020px', 'important');
+  }
 
   /* Keep the success message compact after submission. */
   var PEGA_SUCCESS_HEIGHT = 360;
@@ -1499,6 +1512,7 @@ It also displays the home loan repayment amount based on either the AMP Essentia
     document.getElementById('pega-apply-modal-dialog').classList.remove('success-mode');
 
     embedContainer.style.display = 'block';
+    applyDialogHeight();
     applyPegaFormHeight();
     applySuccessPanelHeight();
 
@@ -1506,10 +1520,15 @@ It also displays the home loan repayment amount based on either the AMP Essentia
      * Pega may write its own inline height after opening.
      * Reapply our configured height after the embed initializes.
      */
+    setTimeout(applyDialogHeight, 0);
     setTimeout(applyPegaFormHeight, 0);
+    setTimeout(applyDialogHeight, 100);
     setTimeout(applyPegaFormHeight, 100);
+    setTimeout(applyDialogHeight, 250);
     setTimeout(applyPegaFormHeight, 250);
+    setTimeout(applyDialogHeight, 500);
     setTimeout(applyPegaFormHeight, 500);
+    setTimeout(applyDialogHeight, 1000);
     setTimeout(applyPegaFormHeight, 1000);
 
     document.body.style.overflow = 'hidden';
