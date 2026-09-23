@@ -2635,12 +2635,8 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
   }
 
   /*
-   * Pega Constellation Web Embed
-   *
-   * The supplied page contained a no-op loadComplaintEmbed() function.
-   * That meant the host displayed "Loading complaint form..." forever.
-   *
-   * Configuration below matches the Pega Web Embed snippet supplied for the Raise a Complaint menu.
+   * Pega Web Embed for Raise a Complaint
+   * Loaded only when the Raise a Complaint menu item is clicked.
    */
    const PEGA_WEB_EMBED_CONFIG = {
      scriptUrl: "https://omc-csfs-26.pegademo.com/prweb/PRRestService/c11nsvc/v1/pega-embed.js",
@@ -2650,8 +2646,8 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
      casePage: "assignment",
      assignmentHeader: "false",
      appAlias: "CSFSDemo",
-     authService: "pega",
      autoReauth: "true",
+     authService: "pega",
      userIdentifier: "Carmelita Williams",
      password: "cnVsZXM=",
      clientId: "25967181096906812524"
@@ -2667,29 +2663,6 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
      status.textContent = message;
    }
 
-   function validatePegaWebEmbedConfig() {
-     const required = [
-       ["caseTypeID", PEGA_WEB_EMBED_CONFIG.caseTypeID],
-       ["appAlias", PEGA_WEB_EMBED_CONFIG.appAlias],
-       ["staticContentUrl", PEGA_WEB_EMBED_CONFIG.staticContentUrl],
-       ["clientId", PEGA_WEB_EMBED_CONFIG.clientId]
-     ];
-
-     const missing = required
-       .filter(function(item) {
-         return !item[1] || String(item[1]).indexOf("REPLACE_WITH_") === 0;
-       })
-       .map(function(item) { return item[0]; });
-
-     if (missing.length) {
-       throw new Error(
-         "Pega Web Embed configuration is incomplete. Missing: " +
-         missing.join(", ") +
-         ". Copy these values from the generated Web Embed code in Pega."
-       );
-     }
-   }
-
    function loadPegaEmbedScript() {
      if (window.customElements && window.customElements.get("pega-embed")) {
        return Promise.resolve();
@@ -2698,40 +2671,35 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
      if (pegaEmbedScriptPromise) return pegaEmbedScriptPromise;
 
      pegaEmbedScriptPromise = new Promise(function(resolve, reject) {
-       const existing = document.querySelector(
-         'script[data-amp-pega-embed-script="true"]'
-       );
+       let script = document.querySelector('script[data-amp-pega-embed-script="true"]');
 
-       if (existing && window.customElements && window.customElements.whenDefined) {
-         window.customElements.whenDefined("pega-embed")
-           .then(resolve)
-           .catch(reject);
+       if (script) {
+         if (window.customElements && window.customElements.whenDefined) {
+           window.customElements.whenDefined("pega-embed").then(resolve).catch(reject);
+         } else {
+           resolve();
+         }
          return;
        }
 
-       const script = existing || document.createElement("script");
+       script = document.createElement("script");
        script.src = PEGA_WEB_EMBED_CONFIG.scriptUrl;
-       script.async = true;
        script.setAttribute("data-amp-pega-embed-script", "true");
+       script.async = false;
 
        script.onload = function() {
          if (window.customElements && window.customElements.whenDefined) {
-           window.customElements.whenDefined("pega-embed")
-             .then(resolve)
-             .catch(reject);
+           window.customElements.whenDefined("pega-embed").then(resolve).catch(reject);
          } else {
            resolve();
          }
        };
 
        script.onerror = function() {
-         reject(new Error(
-           "Unable to load Pega Web Embed script: " +
-           PEGA_WEB_EMBED_CONFIG.scriptUrl
-         ));
+         reject(new Error("Unable to load Pega Web Embed script."));
        };
 
-       if (!existing) document.head.appendChild(script);
+       document.head.appendChild(script);
      });
 
      return pegaEmbedScriptPromise;
@@ -2739,19 +2707,16 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
 
    function createComplaintPegaEmbed() {
      const mount = document.getElementById("ampComplaintEmbedMount");
-     if (!mount) {
-       throw new Error("Complaint Web Embed mount element was not found.");
-     }
+     if (!mount) throw new Error("Complaint Web Embed mount element was not found.");
 
      const existingEmbed = mount.querySelector("pega-embed");
-     if (existingEmbed) {
-       return existingEmbed;
-     }
+     if (existingEmbed) return existingEmbed;
 
-     mount.innerHTML = "";
-
+     /*
+      * This is the supplied Pega Web Embed mashup configuration.
+      * It is created after the menu click, rather than being loaded on page load.
+      */
      const embed = document.createElement("pega-embed");
-
      embed.id = "theEmbed";
      embed.setAttribute("action", "createCase");
      embed.setAttribute("caseTypeID", PEGA_WEB_EMBED_CONFIG.caseTypeID);
@@ -2763,46 +2728,33 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
      embed.setAttribute("autoReauth", PEGA_WEB_EMBED_CONFIG.autoReauth);
      embed.setAttribute("authService", PEGA_WEB_EMBED_CONFIG.authService);
      embed.setAttribute("UserIdentifier", PEGA_WEB_EMBED_CONFIG.userIdentifier);
-     embed.setAttribute("password", PEGA_WEB_EMBED_CONFIG.password);
+     embed.setAttribute("Password", PEGA_WEB_EMBED_CONFIG.password);
      embed.setAttribute("clientId", PEGA_WEB_EMBED_CONFIG.clientId);
-     embed.style.width = "100%";
-     embed.style.display = "block";
-     embed.style.minHeight = "700px";
+     embed.style.cssText = "width:100%;display:block;min-height:700px;";
 
      embed.addEventListener("embedready", function() {
        complaintEmbedLoaded = true;
-       console.log("[AMP] Pega Complaint Web Embed is ready.");
+       console.log("[AMP] Pega Raise a Complaint Web Embed is ready.");
      });
 
      embed.addEventListener("embedreauth", function() {
-       console.warn("[AMP] Pega Complaint Web Embed requires re-authentication.");
+       console.warn("[AMP] Pega Web Embed requested re-authentication.");
      });
 
      embed.addEventListener("embedprocessingend", function() {
-       console.log("[AMP] Complaint case processing completed.");
+       console.log("[AMP] Raise a Complaint case processing completed.");
      });
 
-     mount.appendChild(embed);
-     return embed;
-   });
-
-     embed.addEventListener("embedreauth", function() {
-       console.warn("[AMP] Pega Web Embed requires re-authentication.");
-     });
-
-     embed.addEventListener("embedprocessingend", function() {
-       console.log("[AMP] Complaint case processing completed.");
-     });
-
-     mount.appendChild(embed);
+     mount.replaceChildren(embed);
      return embed;
    }
 
    window.loadComplaintEmbed = async function loadComplaintEmbed() {
-     if (complaintEmbedLoaded) return;
+     if (complaintEmbedLoaded || document.querySelector("#ampComplaintEmbedMount pega-embed")) {
+       return;
+     }
 
      try {
-       validatePegaWebEmbedConfig();
        setComplaintEmbedStatus("Loading complaint form...", false);
 
        await loadPegaEmbedScript();
@@ -2811,19 +2763,19 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
          await window.customElements.whenDefined("pega-embed");
        }
 
-       const embed = createComplaintPegaEmbed();
-const status = document.getElementById("ampComplaintEmbedStatus");
-       if (status) status.remove();
+       createComplaintPegaEmbed();
 
+       const status = document.getElementById("ampComplaintEmbedStatus");
+       if (status) status.remove();
      } catch (error) {
-       console.error("[AMP] Unable to load complaint Web Embed:", error);
+       console.error("[AMP] Unable to load Raise a Complaint Web Embed:", error);
        setComplaintEmbedStatus(
          "Unable to load the complaint form. " +
-         (error && error.message ? error.message : "Check the Pega Web Embed configuration."),
+         (error && error.message ? error.message : "Please check the Pega Web Embed configuration."),
          true
        );
      }
-   }
+   };
 
   document.getElementById("ampComplaintClose").addEventListener("click", closeComplaint);
 
@@ -3611,3 +3563,302 @@ const status = document.getElementById("ampComplaintEmbedStatus");
   margin-left:0 !important;
 }
 </style>
+
+
+<!-- AMP complaint completion override v11 -->
+<style id="amp-complaint-thank-you-style">
+  /* Slightly reduce only the Raise a Complaint header. */
+  #ampComplaintModal .amp-complaint-header{
+    min-height:66px !important;
+    padding:10px max(28px, calc((100vw - 1280px) / 2)) !important;
+    gap:14px !important;
+    box-sizing:border-box !important;
+  }
+
+  #ampComplaintModal .amp-complaint-header .amp-workspace-title{
+    gap:9px !important;
+  }
+
+  #ampComplaintModal .amp-complaint-header .amp-workspace-icon{
+    width:34px !important;
+    height:34px !important;
+    flex:0 0 34px !important;
+    border-radius:8px !important;
+  }
+
+  #ampComplaintModal .amp-complaint-header .amp-workspace-icon svg{
+    width:20px !important;
+    height:20px !important;
+  }
+
+  #ampComplaintModal .amp-complaint-header .amp-workspace-title h2{
+    font-size:23px !important;
+    line-height:1.08 !important;
+  }
+
+  #ampComplaintModal .amp-complaint-header .amp-workspace-title p{
+    margin:2px 0 0 !important;
+    font-size:12px !important;
+    line-height:1.25 !important;
+  }
+
+  /* Thank-you state shown after Pega completes the case submission. */
+  #ampComplaintThankYou{
+    display:none;
+    min-height:430px;
+    padding:48px 24px 64px;
+    box-sizing:border-box;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    background:#fff;
+  }
+
+  #ampComplaintThankYou.is-visible{
+    display:flex;
+  }
+
+  /* Clean AMP-style Thank You screen inside a compact rounded card. */
+  #ampComplaintThankYou .amp-thank-you-card{
+    width:min(640px,calc(100% - 32px));
+    padding:46px 42px 48px;
+    box-sizing:border-box;
+    background:#fff;
+    border:1px solid #e1e7ed;
+    border-radius:18px;
+    box-shadow:0 8px 28px rgba(0,30,65,.08);
+  }
+
+  #ampComplaintThankYou .amp-thank-you-check{
+    width:82px;
+    height:82px;
+    margin:0 auto 22px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:#178c54;
+    color:#fff;
+    box-sizing:border-box;
+  }
+
+  #ampComplaintThankYou .amp-thank-you-check svg{
+    width:50px;
+    height:50px;
+    fill:none;
+    stroke:#fff;
+    stroke-width:5;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+
+  #ampComplaintThankYou h2{
+    margin:0;
+    color:#001e41;
+    font-size:30px;
+    line-height:1.2;
+    letter-spacing:-.02em;
+  }
+
+  #ampComplaintThankYou p{
+    margin:10px auto 0;
+    max-width:520px;
+    color:#526b84;
+    font-size:15px;
+    line-height:1.5;
+  }
+
+  @media(max-width:640px){
+    #ampComplaintModal .amp-complaint-header{
+      min-height:60px !important;
+      padding:10px 18px !important;
+    }
+
+    #ampComplaintModal .amp-complaint-header .amp-workspace-icon{
+      width:34px !important;
+      height:34px !important;
+      flex-basis:34px !important;
+    }
+
+    #ampComplaintModal .amp-complaint-header .amp-workspace-title h2{
+      font-size:21px !important;
+    }
+
+    #ampComplaintThankYou{
+      min-height:360px;
+      padding:34px 16px 44px;
+    }
+
+    #ampComplaintThankYou .amp-thank-you-card{
+      width:calc(100% - 24px);
+      padding:34px 20px 36px;
+      border-radius:16px;
+    }
+
+    #ampComplaintThankYou .amp-thank-you-check{
+      width:76px;
+      height:76px;
+    }
+
+    #ampComplaintThankYou .amp-thank-you-check svg{
+      width:46px;
+      height:46px;
+    }
+
+    #ampComplaintThankYou h2{
+      font-size:24px;
+    }
+
+    #ampComplaintThankYou p{
+      font-size:14px;
+    }
+  }
+</style>
+
+<script id="amp-complaint-thank-you-script">
+(function(){
+  "use strict";
+
+  var THANK_YOU_ID = "ampComplaintThankYou";
+  var EMBED_MOUNT_ID = "ampComplaintEmbedMount";
+  var EMBED_HOST_ID = "ampComplaintEmbedHost";
+  var completionHandled = false;
+
+  function getThankYou(){
+    var node = document.getElementById(THANK_YOU_ID);
+    if(node) return node;
+
+    var host = document.getElementById(EMBED_HOST_ID);
+    var modal = document.getElementById("ampComplaintModal");
+    if(!modal) return null;
+
+    node = document.createElement("div");
+    node.id = THANK_YOU_ID;
+    node.setAttribute("aria-live","polite");
+    node.innerHTML =
+      '<div class="amp-thank-you-card" role="status">' +
+        '<div class="amp-thank-you-check" aria-hidden="true">' +
+          '<svg viewBox="0 0 64 64">' +
+            '<path d="M17 33.5 27.5 44 48 22.5"></path>' +
+          '</svg>' +
+        '</div>' +
+        '<h2>Thank you!</h2>' +
+        '<p>Your complaint has been submitted successfully. We will review it and take the next steps.</p>' +
+      '</div>';
+
+    if(host && host.parentNode){
+      host.parentNode.insertBefore(node, host.nextSibling);
+    }else{
+      modal.appendChild(node);
+    }
+
+    return node;
+  }
+
+  function showComplaintThankYou(){
+    if(completionHandled) return;
+    completionHandled = true;
+
+    var host = document.getElementById(EMBED_HOST_ID);
+    var thankYou = getThankYou();
+
+    if(host) host.style.display = "none";
+    if(thankYou) thankYou.classList.add("is-visible");
+
+    var modal = document.getElementById("ampComplaintModal");
+    if(modal) modal.classList.add("amp-complaint-submitted");
+
+    console.log("[AMP] Complaint submitted. Showing custom Thank You screen.");
+  }
+
+  function resetComplaintThankYou(){
+    completionHandled = false;
+
+    var host = document.getElementById(EMBED_HOST_ID);
+    var thankYou = document.getElementById(THANK_YOU_ID);
+
+    if(host) host.style.display = "";
+    if(thankYou) thankYou.classList.remove("is-visible");
+
+    var modal = document.getElementById("ampComplaintModal");
+    if(modal) modal.classList.remove("amp-complaint-submitted");
+  }
+
+  function attachToEmbed(embed){
+    if(!embed || embed.dataset.ampThankYouAttached === "true") return;
+    embed.dataset.ampThankYouAttached = "true";
+
+    /*
+     * Pega Web Embed raises embedprocessingend after its current
+     * case-processing operation completes. Use that event to replace
+     * Pega's confirmation state with our own Thank You screen.
+     */
+    embed.addEventListener("embedprocessingend", function(){
+      window.setTimeout(showComplaintThankYou, 150);
+    });
+
+    /* Keep a fallback for implementations that expose the event through
+       the document rather than directly on the custom element. */
+    document.addEventListener("embedprocessingend", function(event){
+      if(event && event.target === embed){
+        window.setTimeout(showComplaintThankYou, 150);
+      }
+    });
+  }
+
+  function watchForEmbed(){
+    var existing = document.querySelector("#" + EMBED_MOUNT_ID + " pega-embed");
+    if(existing) attachToEmbed(existing);
+
+    var mount = document.getElementById(EMBED_MOUNT_ID);
+    if(!mount || !window.MutationObserver) return;
+
+    var observer = new MutationObserver(function(){
+      var embed = mount.querySelector("pega-embed");
+      if(embed) attachToEmbed(embed);
+    });
+
+    observer.observe(mount,{childList:true,subtree:true});
+  }
+
+  /*
+   * Patch the existing createComplaintPegaEmbed function's resulting
+   * element without replacing the original Pega configuration.
+   */
+  function init(){
+    watchForEmbed();
+
+    var originalLoad = window.loadComplaintEmbed;
+    if(typeof originalLoad === "function"){
+      window.loadComplaintEmbed = async function(){
+        resetComplaintThankYou();
+        var result = await originalLoad.apply(this, arguments);
+        watchForEmbed();
+        return result;
+      };
+    }
+
+    var closeButton = document.getElementById("ampComplaintClose");
+    if(closeButton){
+      closeButton.addEventListener("click", function(){
+        resetComplaintThankYou();
+      }, true);
+    }
+
+    /* Also reset when a new complaint workspace is opened. */
+    var complaintButton = document.getElementById("ampRaiseComplaintButton");
+    if(complaintButton){
+      complaintButton.addEventListener("click", resetComplaintThankYou, true);
+    }
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", init);
+  }else{
+    init();
+  }
+
+  window.ampShowComplaintThankYou = showComplaintThankYou;
+  window.ampResetComplaintThankYou = resetComplaintThankYou;
+})();
+</script>
+
