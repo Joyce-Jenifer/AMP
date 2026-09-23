@@ -2486,12 +2486,8 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
     </div>
 
     <div id="ampComplaintEmbedHost" class="amp-complaint-embed-host">
-       <div id="ampComplaintEmbedMount" class="amp-complaint-embed-mount">
-         <div id="ampComplaintEmbedStatus" class="amp-complaint-loading">
-           Preparing complaint form...
-         </div>
-       </div>
-     </div>
+      <div class="amp-complaint-loading">Loading complaint form...</div>
+    </div>
   </section>
 </div>
 
@@ -2510,46 +2506,6 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
   </section>
 </div>
 
-<script id="amp-operator-click-fix-script">
-(function(){
-  function initAmpOperatorClickFix(){
-    var menu=document.querySelector(".amp-operator-menu");
-    var button=document.getElementById("ampOperatorButton");
-    var dropdown=document.getElementById("ampOperatorDropdown");
-    if(!menu||!button||!dropdown||menu.dataset.portalled==="true") return;
-
-    var rect=menu.getBoundingClientRect();
-    var placeholder=document.createElement("span");
-    placeholder.setAttribute("aria-hidden","true");
-    placeholder.style.display="inline-block";
-    placeholder.style.width=rect.width+"px";
-    placeholder.style.height=rect.height+"px";
-    menu.parentNode.insertBefore(placeholder,menu);
-    document.body.appendChild(menu);
-
-    menu.dataset.portalled="true";
-    menu.classList.add("amp-operator-menu-portalled");
-
-    function positionMenu(){
-      var r=placeholder.getBoundingClientRect();
-      menu.style.position="fixed";
-      menu.style.top=r.top+"px";
-      menu.style.left=r.left+"px";
-      menu.style.right="auto";
-      menu.style.width=Math.max(r.width,220)+"px";
-    }
-    positionMenu();
-    window.addEventListener("resize",positionMenu,{passive:true});
-    window.addEventListener("scroll",positionMenu,{passive:true});
-  }
-
-  if(document.readyState==="loading"){
-    document.addEventListener("DOMContentLoaded",initAmpOperatorClickFix);
-  }else{
-    initAmpOperatorClickFix();
-  }
-})();
-</script>
 <script>
 (function(){
   const CASES_API="https://omc-csfs-26.pegademo.com/prweb/api/CSAdmin/V1/cases/byoperator";
@@ -2634,196 +2590,10 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal){disp
     if(!overlay.classList.contains("is-open")) setWorkspace(false);
   }
 
-  /*
-   * Pega Constellation Web Embed
-   *
-   * The supplied page contained a no-op loadComplaintEmbed() function.
-   * That meant the host displayed "Loading complaint form..." forever.
-   *
-   * Configuration below matches the Pega Web Embed snippet supplied for the Raise a Complaint menu.
-   */
-   const PEGA_WEB_EMBED_CONFIG = {
-     scriptUrl: "https://omc-csfs-26.pegademo.com/prweb/PRRestService/c11nsvc/v1/pega-embed.js",
-     pegaServerUrl: "https://omc-csfs-26.pegademo.com/prweb/",
-     caseTypeID: "FS-CSFSDemo-Work-Grp1-Complaint",
-     themeID: "AMP",
-     casePage: "assignment",
-     assignmentHeader: "false",
-     appAlias: "CSFSDemo",
-     authService: "pega",
-     autoReauth: "true",
-     userIdentifier: "Carmelita Williams",
-     password: "cnVsZXM=",
-     clientId: "25967181096906812524"
-   };
-
-   let pegaEmbedScriptPromise = null;
-   let complaintEmbedLoaded = false;
-
-   function setComplaintEmbedStatus(message, isError) {
-     const status = document.getElementById("ampComplaintEmbedStatus");
-     if (!status) return;
-     status.className = isError ? "amp-complaint-error" : "amp-complaint-loading";
-     status.textContent = message;
-   }
-
-   function validatePegaWebEmbedConfig() {
-     const required = [
-       ["caseTypeID", PEGA_WEB_EMBED_CONFIG.caseTypeID],
-       ["appAlias", PEGA_WEB_EMBED_CONFIG.appAlias],
-       ["staticContentUrl", PEGA_WEB_EMBED_CONFIG.staticContentUrl],
-       ["clientId", PEGA_WEB_EMBED_CONFIG.clientId]
-     ];
-
-     const missing = required
-       .filter(function(item) {
-         return !item[1] || String(item[1]).indexOf("REPLACE_WITH_") === 0;
-       })
-       .map(function(item) { return item[0]; });
-
-     if (missing.length) {
-       throw new Error(
-         "Pega Web Embed configuration is incomplete. Missing: " +
-         missing.join(", ") +
-         ". Copy these values from the generated Web Embed code in Pega."
-       );
-     }
-   }
-
-   function loadPegaEmbedScript() {
-     if (window.customElements && window.customElements.get("pega-embed")) {
-       return Promise.resolve();
-     }
-
-     if (pegaEmbedScriptPromise) return pegaEmbedScriptPromise;
-
-     pegaEmbedScriptPromise = new Promise(function(resolve, reject) {
-       const existing = document.querySelector(
-         'script[data-amp-pega-embed-script="true"]'
-       );
-
-       if (existing && window.customElements && window.customElements.whenDefined) {
-         window.customElements.whenDefined("pega-embed")
-           .then(resolve)
-           .catch(reject);
-         return;
-       }
-
-       const script = existing || document.createElement("script");
-       script.src = PEGA_WEB_EMBED_CONFIG.scriptUrl;
-       script.async = true;
-       script.setAttribute("data-amp-pega-embed-script", "true");
-
-       script.onload = function() {
-         if (window.customElements && window.customElements.whenDefined) {
-           window.customElements.whenDefined("pega-embed")
-             .then(resolve)
-             .catch(reject);
-         } else {
-           resolve();
-         }
-       };
-
-       script.onerror = function() {
-         reject(new Error(
-           "Unable to load Pega Web Embed script: " +
-           PEGA_WEB_EMBED_CONFIG.scriptUrl
-         ));
-       };
-
-       if (!existing) document.head.appendChild(script);
-     });
-
-     return pegaEmbedScriptPromise;
-   }
-
-   function createComplaintPegaEmbed() {
-     const mount = document.getElementById("ampComplaintEmbedMount");
-     if (!mount) {
-       throw new Error("Complaint Web Embed mount element was not found.");
-     }
-
-     const existingEmbed = mount.querySelector("pega-embed");
-     if (existingEmbed) {
-       return existingEmbed;
-     }
-
-     mount.innerHTML = "";
-
-     const embed = document.createElement("pega-embed");
-
-     embed.id = "theEmbed";
-     embed.setAttribute("action", "createCase");
-     embed.setAttribute("caseTypeID", PEGA_WEB_EMBED_CONFIG.caseTypeID);
-     embed.setAttribute("themeID", PEGA_WEB_EMBED_CONFIG.themeID);
-     embed.setAttribute("casePage", PEGA_WEB_EMBED_CONFIG.casePage);
-     embed.setAttribute("assignmentHeader", PEGA_WEB_EMBED_CONFIG.assignmentHeader);
-     embed.setAttribute("appAlias", PEGA_WEB_EMBED_CONFIG.appAlias);
-     embed.setAttribute("pegaServerUrl", PEGA_WEB_EMBED_CONFIG.pegaServerUrl);
-     embed.setAttribute("autoReauth", PEGA_WEB_EMBED_CONFIG.autoReauth);
-     embed.setAttribute("authService", PEGA_WEB_EMBED_CONFIG.authService);
-     embed.setAttribute("UserIdentifier", PEGA_WEB_EMBED_CONFIG.userIdentifier);
-     embed.setAttribute("password", PEGA_WEB_EMBED_CONFIG.password);
-     embed.setAttribute("clientId", PEGA_WEB_EMBED_CONFIG.clientId);
-     embed.style.width = "100%";
-     embed.style.display = "block";
-     embed.style.minHeight = "700px";
-
-     embed.addEventListener("embedready", function() {
-       complaintEmbedLoaded = true;
-       console.log("[AMP] Pega Complaint Web Embed is ready.");
-     });
-
-     embed.addEventListener("embedreauth", function() {
-       console.warn("[AMP] Pega Complaint Web Embed requires re-authentication.");
-     });
-
-     embed.addEventListener("embedprocessingend", function() {
-       console.log("[AMP] Complaint case processing completed.");
-     });
-
-     mount.appendChild(embed);
-     return embed;
-   });
-
-     embed.addEventListener("embedreauth", function() {
-       console.warn("[AMP] Pega Web Embed requires re-authentication.");
-     });
-
-     embed.addEventListener("embedprocessingend", function() {
-       console.log("[AMP] Complaint case processing completed.");
-     });
-
-     mount.appendChild(embed);
-     return embed;
-   }
-
-   window.loadComplaintEmbed = async function loadComplaintEmbed() {
-     if (complaintEmbedLoaded) return;
-
-     try {
-       validatePegaWebEmbedConfig();
-       setComplaintEmbedStatus("Loading complaint form...", false);
-
-       await loadPegaEmbedScript();
-
-       if (window.customElements && window.customElements.whenDefined) {
-         await window.customElements.whenDefined("pega-embed");
-       }
-
-       const embed = createComplaintPegaEmbed();
-const status = document.getElementById("ampComplaintEmbedStatus");
-       if (status) status.remove();
-
-     } catch (error) {
-       console.error("[AMP] Unable to load complaint Web Embed:", error);
-       setComplaintEmbedStatus(
-         "Unable to load the complaint form. " +
-         (error && error.message ? error.message : "Check the Pega Web Embed configuration."),
-         true
-       );
-     }
-   }
+  function loadComplaintEmbed() {
+    // Pega Digital Messaging widget is installed directly above </body>.
+    // No dynamic loading is required here.
+  }
 
   document.getElementById("ampComplaintClose").addEventListener("click", closeComplaint);
 
@@ -3065,34 +2835,11 @@ const status = document.getElementById("ampComplaintEmbedStatus");
 
 <!-- Pega Web Embed Mashup -->
 <style id="pega-embed-host-style">
-  /* Web Embed host: do not clip authentication popups or Web Component UI. */
-  .amp-complaint-embed-host{
-    width:100%;
-    box-sizing:border-box;
-    overflow:visible !important;
-  }
+  /* Keep the AMP page visible and collapse only the host's layout box.
+     Do NOT use overflow:hidden on the custom element itself because that
+     can clip the Pega Agent Chat launcher along with the page. */
 
-  .amp-complaint-embed-mount{
-    width:100%;
-    min-height:700px;
-    box-sizing:border-box;
-    position:relative;
-  }
-
-  .amp-complaint-embed-mount pega-embed{
-    display:block !important;
-    width:100% !important;
-    min-height:700px !important;
-    box-sizing:border-box;
-    background:#fff;
-  }
-
-  @media(max-width:640px){
-    .amp-complaint-embed-mount,
-    .amp-complaint-embed-mount pega-embed{
-      min-height:650px !important;
-    }
-  }
+  /* Collapse the Pega embed host without clipping floating launcher UI. */
 </style>
 
 
@@ -3593,21 +3340,4 @@ const status = document.getElementById("ampComplaintEmbedStatus");
 </style>
 
 
-<!-- AMP Pega controls fix v9: clickable operator menu + exact Web Embed --><style id="amp-operator-click-fix">
-.amp-operator-menu{
-  position:fixed !important;
-  z-index:2147483647 !important;
-  pointer-events:auto !important;
-}
-.amp-operator-menu .amp-operator-button,
-.amp-operator-menu .amp-operator-dropdown,
-.amp-operator-menu .amp-operator-menu-item{
-  pointer-events:auto !important;
-}
-.amp-operator-menu .amp-operator-dropdown{
-  z-index:2147483647 !important;
-}
-.amp-operator-menu.amp-operator-menu-portalled{
-  margin-left:0 !important;
-}
-</style>
+<!-- AMP Pega controls fix v7: Active cases + Scroll-to-latest hidden -->
