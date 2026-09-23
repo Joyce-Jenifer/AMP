@@ -3300,7 +3300,7 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal):not(
 
     const thead=document.createElement("thead");
     const headerRow=document.createElement("tr");
-    ["Case ID","Last Updated","Complaint Category","Complaint Details","Case Status"].forEach(label=>{
+    ["Case ID","Complaint Category","Complaint Details","Case Status","Last Updated"].forEach(label=>{
       const th=document.createElement("th");
       th.scope="col";
       th.textContent=label;
@@ -3344,7 +3344,7 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal):not(
       badge.append(dot,statusLabel);
       statusCell.appendChild(badge);
 
-      row.append(idCell,updatedCell,categoryCell,detailsCell,statusCell);
+      row.append(idCell,categoryCell,detailsCell,statusCell,updatedCell);
       tbody.appendChild(row);
     });
 
@@ -3511,9 +3511,9 @@ main.amp-workspace-active > *:not(#ampCasesOverlay):not(#ampComplaintModal):not(
 }
 #ampCasesOverlay .amp-cases-table th:nth-child(1){width:17% !important}
 #ampCasesOverlay .amp-cases-table th:nth-child(2){width:18% !important}
-#ampCasesOverlay .amp-cases-table th:nth-child(3){width:18% !important}
-#ampCasesOverlay .amp-cases-table th:nth-child(4){width:32% !important}
-#ampCasesOverlay .amp-cases-table th:nth-child(5){width:15% !important}
+#ampCasesOverlay .amp-cases-table th:nth-child(3){width:32% !important}
+#ampCasesOverlay .amp-cases-table th:nth-child(4){width:15% !important}
+#ampCasesOverlay .amp-cases-table th:nth-child(5){width:18% !important}
 #ampCasesOverlay .amp-cases-table td{
   padding:17px 16px !important;
   border-bottom:1px solid #edf1f4 !important;
