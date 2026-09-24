@@ -1316,10 +1316,73 @@ It also displays the home loan repayment amount based on either the AMP Essentia
 })();
 &lt;/script&gt;
 
-&lt;/body&gt;&lt;/html&gt;" style="height:1080px" width="100%"></iframe>
+&lt;/body&gt;&lt;/html&gt;" style="height:900px" width="100%"></iframe>
 </div>
 </div>
 
+
+<script>
+(function () {
+
+  /*
+   * The calculator is inside a srcdoc iframe. Because the iframe uses
+   * allow-same-origin, we can hide the calculator's generated Print
+   * control from the parent page.
+   */
+  function hideCalculatorPrint() {
+
+    var frame = document.getElementById('wiwo-tzububi');
+    if (!frame) {
+      return;
+    }
+
+    try {
+
+      var frameDocument = frame.contentDocument ||
+                          frame.contentWindow.document;
+
+      if (!frameDocument || !frameDocument.head) {
+        return;
+      }
+
+      var styleId = 'amp-hide-calculator-print';
+
+      if (!frameDocument.getElementById(styleId)) {
+
+        var style = frameDocument.createElement('style');
+        style.id = styleId;
+
+        style.textContent = [
+          'html { zoom: 0.90 !important; }',
+          '.addon--print-trigger { display:none !important; }',
+          '.bp-print { display:none !important; }',
+          '.app-utils__items .addon--info-trigger { margin-left:0 !important; }'
+        ].join('\n');
+
+        frameDocument.head.appendChild(style);
+      }
+
+    } catch (error) {
+      /*
+       * The iframe may not be ready yet. The load event and retries
+       * below will try again.
+       */
+    }
+  }
+
+  var calculatorFrame = document.getElementById('wiwo-tzububi');
+
+  if (calculatorFrame) {
+    calculatorFrame.addEventListener('load', hideCalculatorPrint);
+    hideCalculatorPrint();
+
+    setTimeout(hideCalculatorPrint, 300);
+    setTimeout(hideCalculatorPrint, 1000);
+    setTimeout(hideCalculatorPrint, 2000);
+  }
+
+})();
+</script>
 
 <style>
 /* AMP result-download modal */
@@ -1651,23 +1714,9 @@ It also displays the home loan repayment amount based on either the AMP Essentia
 
     <div id="pega-apply-embed-container">
 
-      <script src="https://omc-csfs-26.pegademo.com/prweb/PRRestService/c11nsvc/v1/pega-embed.js"></script>
-
-      <pega-embed
-        action="createCase"
-        appalias="DemoSA"
-        assignmentheader="false"
-        authservice="pega"
-        autoreauth="true"
-        casepage="assignment"
-        casetypeid="PegaCRM-Work-SFA-Lead-Ind"
-        clientid="95769441382049129878"
-        UserIdentifier="Srikanth"
-        Password="cnVsZXM="
-        id="theEmbed"
-        pegaserverurl="https://omc-csfs-26.pegademo.com/prweb/"
-        themeid="AMPT">
-      </pega-embed>
+      <!-- Pega Web Embed is created only after the modal is visible and the
+           Pega embed script has finished loading. This avoids initializing
+           the embed while it is inside display:none. -->
 
     </div>
 
@@ -1690,7 +1739,7 @@ It also displays the home loan repayment amount based on either the AMP Essentia
         </h2>
 
         <p class="pega-success-message">
-          We’ll send you the details by email shortly, and a lending consultant will be in touch soon.
+          We’ll send you the details by email shortly, and a sales consultant will be in touch soon.
         </p>
 
       </div>
@@ -1706,29 +1755,26 @@ It also displays the home loan repayment amount based on either the AMP Essentia
 
   var modal = document.getElementById('pega-apply-modal');
   var closeButton = document.getElementById('pega-apply-close');
-  var embed = document.getElementById('theEmbed');
   var embedContainer = document.getElementById('pega-apply-embed-container');
   var successPanel = document.getElementById('pega-submit-success');
+  var pegaEmbed = null;
+  var pegaScriptPromise = null;
 
-  if (!modal || !closeButton || !embed || !successPanel) {
+  if (!modal || !closeButton || !embedContainer || !successPanel) {
     return;
   }
 
-  /*
-   * ============================================================
-   * PEGA FORM BOX HEIGHT
-   * ============================================================
-   *
-   * Form is sized to fit all fields and the Submit button without extra white space
-   * in the Pega Web Embed are visible without being clipped.
-   * Increase this value if additional fields are added later.
-   */
   var PEGA_FORM_HEIGHT = 373;
   var PEGA_DIALOG_HEIGHT = 455;
+  var PEGA_SUCCESS_HEIGHT = 360;
+
+  var PEGA_SCRIPT_SRC =
+    'https://omc-csfs-26.pegademo.com/prweb/PRRestService/c11nsvc/v1/pega-embed.js';
 
   function applyDialogHeight() {
     var dialog = document.getElementById('pega-apply-modal-dialog');
     if (!dialog) { return; }
+
     dialog.style.setProperty('height', PEGA_DIALOG_HEIGHT + 'px', 'important');
     dialog.style.setProperty('min-height', '0', 'important');
     dialog.style.setProperty('max-height', 'calc(100vh - 48px)', 'important');
@@ -1736,14 +1782,7 @@ It also displays the home loan repayment amount based on either the AMP Essentia
     dialog.style.setProperty('max-width', '1020px', 'important');
   }
 
-  /* Keep the success message compact after submission. */
-  var PEGA_SUCCESS_HEIGHT = 360;
-
   function applySuccessPanelHeight() {
-    if (!successPanel) {
-      return;
-    }
-
     var successHeight = PEGA_SUCCESS_HEIGHT + 'px';
 
     successPanel.style.setProperty('height', successHeight, 'important');
@@ -1752,13 +1791,9 @@ It also displays the home loan repayment amount based on either the AMP Essentia
   }
 
   function applyPegaFormHeight() {
-    if (!embedContainer) {
-      return;
-    }
+    var embed = pegaEmbed || document.getElementById('theEmbed');
 
-    var heightValue = PEGA_FORM_HEIGHT + 'px';
-
-    embedContainer.style.setProperty('height', heightValue, 'important');
+    embedContainer.style.setProperty('height', PEGA_FORM_HEIGHT + 'px', 'important');
     embedContainer.style.setProperty('min-height', '0', 'important');
     embedContainer.style.setProperty('max-height', 'none', 'important');
     embedContainer.style.setProperty('overflow', 'hidden', 'important');
@@ -1767,24 +1802,113 @@ It also displays the home loan repayment amount based on either the AMP Essentia
     embedContainer.style.setProperty('padding-bottom', '0', 'important');
     embedContainer.style.setProperty('margin-bottom', '0', 'important');
 
-    /*
-     * Also override any inline sizing that Pega places on
-     * the <pega-embed> custom element itself.
-     */
-    embed.style.setProperty('height', '100%', 'important');
-    embed.style.setProperty('min-height', '0', 'important');
-    embed.style.setProperty('max-height', 'none', 'important');
-    embed.style.setProperty('margin', '0', 'important');
-    embed.style.setProperty('padding', '0', 'important');
-    embed.style.setProperty('overflow', 'visible', 'important');
+    if (embed) {
+      embed.style.setProperty('display', 'block', 'important');
+      embed.style.setProperty('height', '100%', 'important');
+      embed.style.setProperty('min-height', '0', 'important');
+      embed.style.setProperty('max-height', 'none', 'important');
+      embed.style.setProperty('margin', '0', 'important');
+      embed.style.setProperty('padding', '0', 'important');
+      embed.style.setProperty('overflow', 'visible', 'important');
+    }
+  }
+
+  /*
+   * Load the Pega Web Embed library only once.
+   * The custom element is created only after the library is ready.
+   */
+  function loadPegaEmbedScript() {
+
+    if (window.customElements && window.customElements.get('pega-embed')) {
+      return Promise.resolve();
+    }
+
+    if (pegaScriptPromise) {
+      return pegaScriptPromise;
+    }
+
+    pegaScriptPromise = new Promise(function (resolve, reject) {
+
+      var existing = document.getElementById('pega-embed-script');
+
+      if (existing) {
+        existing.addEventListener('load', resolve, { once: true });
+        existing.addEventListener('error', reject, { once: true });
+        return;
+      }
+
+      var script = document.createElement('script');
+      script.id = 'pega-embed-script';
+      script.src = PEGA_SCRIPT_SRC;
+      script.async = true;
+
+      script.onload = function () {
+        if (
+          window.customElements &&
+          window.customElements.whenDefined
+        ) {
+          window.customElements.whenDefined('pega-embed')
+            .then(resolve)
+            .catch(reject);
+        } else {
+          resolve();
+        }
+      };
+
+      script.onerror = function () {
+        reject(new Error('Unable to load the Pega Web Embed script.'));
+      };
+
+      document.head.appendChild(script);
+    });
+
+    return pegaScriptPromise;
+  }
+
+  function createPegaEmbed() {
+
+    if (pegaEmbed && document.body.contains(pegaEmbed)) {
+      return Promise.resolve(pegaEmbed);
+    }
+
+    return loadPegaEmbedScript().then(function () {
+
+      var embed = document.createElement('pega-embed');
+
+      embed.setAttribute('action', 'createCase');
+      embed.setAttribute('appalias', 'DemoSA');
+      embed.setAttribute('assignmentheader', 'false');
+      embed.setAttribute('authservice', 'pega');
+      embed.setAttribute('autoreauth', 'true');
+      embed.setAttribute('casepage', 'assignment');
+      embed.setAttribute('casetypeid', 'PegaCRM-Work-SFA-Lead-Ind');
+      embed.setAttribute('clientid', '95769441382049129878');
+      embed.setAttribute('UserIdentifier', 'Srikanth');
+      embed.setAttribute('Password', 'cnVsZXM=');
+      embed.setAttribute('id', 'theEmbed');
+      embed.setAttribute('pegaserverurl', 'https://omc-csfs-26.pegademo.com/prweb/');
+      embed.setAttribute('themeid', 'AMPT');
+
+      embed.addEventListener('embedprocessingend', function () {
+
+        embedContainer.style.display = 'none';
+
+        document.getElementById('pega-apply-modal-dialog')
+          .classList.add('success-mode');
+
+        successPanel.classList.add('is-visible');
+      });
+
+      embedContainer.appendChild(embed);
+      pegaEmbed = embed;
+
+      applyPegaFormHeight();
+
+      return embed;
+    });
   }
 
   function openModal() {
-
-    /*
-     * Move the modal to <body> so sticky AEM headers
-     * and parent stacking contexts cannot clip it.
-     */
 
     if (modal.parentElement !== document.body) {
       document.body.appendChild(modal);
@@ -1794,72 +1918,68 @@ It also displays the home loan repayment amount based on either the AMP Essentia
     modal.setAttribute('aria-hidden', 'false');
 
     successPanel.classList.remove('is-visible');
-    document.getElementById('pega-apply-modal-dialog').classList.remove('success-mode');
+    document.getElementById('pega-apply-modal-dialog')
+      .classList.remove('success-mode');
 
     embedContainer.style.display = 'block';
+
     applyDialogHeight();
     applyPegaFormHeight();
     applySuccessPanelHeight();
 
-    /*
-     * Pega may write its own inline height after opening.
-     * Reapply our configured height after the embed initializes.
-     */
-    setTimeout(applyDialogHeight, 0);
-    setTimeout(applyPegaFormHeight, 0);
-    setTimeout(applyDialogHeight, 100);
-    setTimeout(applyPegaFormHeight, 100);
-    setTimeout(applyDialogHeight, 250);
-    setTimeout(applyPegaFormHeight, 250);
-    setTimeout(applyDialogHeight, 500);
-    setTimeout(applyPegaFormHeight, 500);
-    setTimeout(applyDialogHeight, 1000);
-    setTimeout(applyPegaFormHeight, 1000);
-
     document.body.style.overflow = 'hidden';
+
+    /*
+     * Start Pega only after the modal is visible.
+     * This removes the race between page loading, script loading,
+     * and the hidden modal becoming visible.
+     */
+    createPegaEmbed()
+      .then(function () {
+        applyDialogHeight();
+        applyPegaFormHeight();
+        applySuccessPanelHeight();
+
+        setTimeout(applyDialogHeight, 100);
+        setTimeout(applyPegaFormHeight, 100);
+        setTimeout(applyDialogHeight, 500);
+        setTimeout(applyPegaFormHeight, 500);
+      })
+      .catch(function (error) {
+        console.error('Pega Web Embed failed to initialize:', error);
+      });
   }
 
   function closeModal() {
 
     modal.classList.remove('is-open');
     modal.setAttribute('aria-hidden', 'true');
-
     document.body.style.overflow = '';
 
     /*
-     * Reset the Web Embed so the next Download Result starts fresh.
+     * Remove the current embed completely.
+     * A fresh element will be created the next time Download Result
+     * is clicked, avoiding problems with embed.reload().
      */
-
-    try {
-
-      if (typeof embed.reload === 'function') {
-        embed.reload();
-      }
-
-    } catch (e) {
-
-      /*
-       * Keep the modal close action working
-       * even if reload is unavailable.
-       */
-
+    if (pegaEmbed) {
+      try {
+        pegaEmbed.remove();
+      } catch (e) {}
     }
 
-    setTimeout(function () {
+    pegaEmbed = null;
+    embedContainer.style.display = 'block';
 
-      successPanel.classList.remove('is-visible');
-      document.getElementById('pega-apply-modal-dialog').classList.remove('success-mode');
+    successPanel.classList.remove('is-visible');
+    document.getElementById('pega-apply-modal-dialog')
+      .classList.remove('success-mode');
 
-      embedContainer.style.display = 'block';
-      applyPegaFormHeight();
-      applySuccessPanelHeight();
-
-    }, 150);
+    applyPegaFormHeight();
+    applySuccessPanelHeight();
   }
 
   /*
-   * If Pega changes the inline style again, immediately restore
-   * the configured height.
+   * Keep the configured height if Pega changes the container style.
    */
   if (typeof MutationObserver !== 'undefined') {
     try {
@@ -1871,15 +1991,8 @@ It also displays the home loan repayment amount based on either the AMP Essentia
         attributes: true,
         attributeFilter: ['style']
       });
-    } catch (e) {
-      /* MutationObserver is optional. */
-    }
+    } catch (e) {}
   }
-
-  /*
-   * Listen for the Download Result button
-   * from the AMP calculator.
-   */
 
   window.addEventListener('message', function (event) {
 
@@ -1888,48 +2001,23 @@ It also displays the home loan repayment amount based on either the AMP Essentia
     }
 
     openModal();
-
   });
 
-  /*
-   * Pega Web Embed fires embedprocessingend
-   * when case processing is complete.
-   */
-
-  embed.addEventListener('embedprocessingend', function () {
-
-    embedContainer.style.display = 'none';
-
-    /* Switch the dialog into the full thank-you view. */
-    document.getElementById('pega-apply-modal-dialog').classList.add('success-mode');
-    successPanel.classList.add('is-visible');
-
-  });
-
-
-  closeButton.addEventListener('click', function () {
-
-    closeModal();
-
-  });
+  closeButton.addEventListener('click', closeModal);
 
   modal.addEventListener('click', function (event) {
-
     if (event.target === modal) {
       closeModal();
     }
-
   });
 
   document.addEventListener('keydown', function (event) {
-
     if (
       event.key === 'Escape' &&
       modal.classList.contains('is-open')
     ) {
       closeModal();
     }
-
   });
 
 })();
