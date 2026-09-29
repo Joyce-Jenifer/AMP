@@ -1387,6 +1387,11 @@ It also displays the home loan repayment amount based on either the AMP Essentia
 <style>
 /* AMP result-download modal */
 
+#pega-apply-modal,
+#pega-apply-modal * {
+  font-family: "Hurme Geometric Sans-SemiBold", Arial, sans-serif !important;
+}
+
 #pega-apply-modal {
   display: none;
   position: fixed;
@@ -1604,7 +1609,7 @@ It also displays the home loan repayment amount based on either the AMP Essentia
   #pega-apply-modal-dialog {
     width: 100%;
     min-height: 0 !important;
-    height: min(510px, calc(100vh - 20px)) !important;
+    height: min(540px, calc(100vh - 20px)) !important;
     max-height: calc(100vh - 20px);
     overflow: hidden;
   }
@@ -1653,7 +1658,7 @@ It also displays the home loan repayment amount based on either the AMP Essentia
   #pega-apply-embed-container {
     min-height: 0;
     max-height: none;
-    height: 410px;
+    height: 440px;
     overflow: hidden;
     overflow-y: hidden;
     padding-top: 0;
@@ -1677,7 +1682,7 @@ It also displays the home loan repayment amount based on either the AMP Essentia
   <div
     id="pega-apply-modal-dialog"
     role="dialog"
-    style="height:510px !important; max-height:calc(100vh - 48px) !important; min-height:0 !important; width:min(1020px,82vw) !important; max-width:1020px !important;"
+    style="height:540px !important; max-height:calc(100vh - 48px) !important; min-height:0 !important; width:min(1020px,82vw) !important; max-width:1020px !important;"
     aria-modal="true"
     aria-label="What's next?"
   >
@@ -1764,8 +1769,8 @@ It also displays the home loan repayment amount based on either the AMP Essentia
     return;
   }
 
-  var PEGA_FORM_HEIGHT = 410;
-  var PEGA_DIALOG_HEIGHT = 510;
+  var PEGA_FORM_HEIGHT = 440;
+  var PEGA_DIALOG_HEIGHT = 540;
   var PEGA_SUCCESS_HEIGHT = 360;
 
   var PEGA_SCRIPT_SRC =
